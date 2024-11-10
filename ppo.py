@@ -79,12 +79,11 @@ def parse_args():
 
 def make_env(gym_id, seed, idx, capture_video, run_name):
     def thunk():
-        env = gym.make(gym_id)
+        env = gym.make(gym_id, render_mode="rgb_array")
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-        env.seed(seed)
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
@@ -171,7 +170,7 @@ if __name__ == "__main__":
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
-    next_obs = torch.Tensor(envs.reset()).to(device)
+    next_obs = torch.Tensor(envs.reset(seed=42)[0]).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
     num_updates = args.total_timesteps // args.batch_size
 
@@ -195,16 +194,22 @@ if __name__ == "__main__":
             logprobs[step] = logprob
 
             # TRY NOT TO MODIFY: execute the game and log data.
-            next_obs, reward, done, info = envs.step(action.cpu().numpy())
+            # print(envs.step(action.cpu().numpy()))
+            next_obs, reward, done, truncations, info = envs.step(action.cpu().numpy())
+            # print(torch.tensor(reward).to(device))
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
 
-            for item in info:
-                if "episode" in item.keys():
-                    print(f"global_step={global_step}, episodic_return={item['episode']['r']}")
-                    writer.add_scalar("charts/episodic_return", item["episode"]["r"], global_step)
-                    writer.add_scalar("charts/episodic_length", item["episode"]["l"], global_step)
-                    break
+            # print("info: ", info)
+            if len(info) > 0:
+                for i in range(args.num_envs):
+                    if info['_final_observation'][i]:
+                        item = info['final_info'][i]
+                        if "episode" in item.keys():
+                            print(f"global_step={global_step}, episodic_return={item['episode']['r']}")
+                            writer.add_scalar("charts/episodic_return", item["episode"]["r"], global_step)
+                            writer.add_scalar("charts/episodic_length", item["episode"]["l"], global_step)
+                            break
 
         # bootstrap value if not done
         with torch.no_grad():
