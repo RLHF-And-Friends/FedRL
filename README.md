@@ -14,6 +14,9 @@
 
 Видео [здесь](https://www.youtube.com/watch?v=MEt6rrxH8W4&ab_channel=Weights%26Biases)
 
+Соответствующая [статья](https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/)
+
+
 В рамках одного "policy rollout" мы собираем num_envs * num_steps точек для обучения, a.k.a. args.batch_size.
 
 ### How to run
