@@ -172,7 +172,7 @@ class FederatedEnvironment():
 
         self.num_steps = 0
         self.start_time = time.time()
-        self.next_obs = torch.Tensor(envs.reset(seed=[args.seed + i for i in range(args.num_envs)])[0]).to(device)
+        self.next_obs = torch.Tensor(envs.reset(seed=[args.seed + args.num_envs * self.agent_idx + i for i in range(args.num_envs)])[0]).to(device)
         self.next_done = torch.zeros(args.num_envs).to(device)
 
     def set_neighbors(self, agents):
