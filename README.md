@@ -20,7 +20,7 @@
 
 1. В первом окне терминала запускаем процесс обучения следующей командой
     ```
-
+    python3 federated_ppo.py --total-timesteps=500000 --n-agents=2 --local-updates=16 --num-envs=4 --exp-description="n_agents = 2, local-updates=16" --comm-coeff=10
     ```
 
 2. Во втором окне запускаем тензорборд для визуализации результатов обучения
