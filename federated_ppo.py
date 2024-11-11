@@ -3,10 +3,12 @@ import os
 import random
 import time
 from distutils.util import strtobool
+import copy
 
 import gym
 import numpy as np
 import torch
+import torch.nn.functional as F
 import torch.nn as nn
 import torch.optim as optim
 from torch.distributions.categorical import Categorical
@@ -52,6 +54,8 @@ def parse_args():
         help="the number of parallel game environments")
     parser.add_argument("--num-steps", type=int, default=128,
         help="the number of steps to run in each environment per policy rollout")
+    parser.add_argument("--comm-coeff", type=float, default=1.0,
+        help="communication coefficient")
     parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument("--gae", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
@@ -86,20 +90,28 @@ def parse_args():
     return args
 
 
-def create_comm_matrix(n_agents):
+def create_comm_matrix(n_agents, comm_coeff):
     W = np.zeros((n_agents, n_agents))
     for i in range(n_agents - 1):
-        W[i, i + 1] = W[i + 1, i] = 1
+        W[i, i + 1] = W[i + 1, i] = comm_coeff
     return torch.tensor(W, dtype=torch.float32)
 
 
-def compute_kl(agent1, agent2):
-    # Рассчитываем KL-дивергенцию между двумя агентами
-    # Это упрощенный расчет; в реальной задаче нужно будет реализовать точный расчет KL для распределений
-    params1 = torch.cat([p.view(-1) for p in agent1.parameters()])
-    params2 = torch.cat([p.view(-1) for p in agent2.parameters()])
-    return torch.sum((params1 - params2) ** 2)
+def compute_kl_divergence(p, q):
+    """
+    Функция для вычисления KL-дивергенции между двумя распределениями p и q.
+    Используем log_softmax для стабильности.
+    """
+    with torch.no_grad():
+        p_log = F.log_softmax(p, dim=-1)
+        q_log = F.log_softmax(q, dim=-1)
+        # print(f"p_log: {p_log}, q_log: {q_log}")
+        # kl_div = F.kl_div(p_log, q_log, reduction='batchmean')
+        kl_div = (p_log.exp() * (p_log - q_log)).sum()
 
+        # print("KL div: ", kl_div)
+
+        return kl_div
 
 
 def make_env(gym_id, seed, idx, capture_video, run_name=None):
@@ -144,6 +156,12 @@ class Agent(nn.Module):
         if action is None:
             action = probs.sample()
         return action, probs.log_prob(action), probs.entropy(), self.critic(hidden)
+
+    def get_b_logprobs(self, next_obs):
+        with torch.no_grad():
+            action, logprob, _, value = self.get_action_and_value(next_obs)
+
+        return logprob
 
 
 class FederatedEnvironment():
@@ -303,6 +321,17 @@ class FederatedEnvironment():
                     entropy_loss = entropy.mean()
                     loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
 
+                    for neighbor_agent_idx in range(args.n_agents):
+                        if neighbor_agent_idx != self.agent_idx:
+                            # print("LEN: ", len(self.comm_matrix[self.agent_idx]))
+                            comm_coeff = self.comm_matrix[self.agent_idx][neighbor_agent_idx]
+                            current_b_logprobs = self.agent.get_b_logprobs(self.next_obs).reshape(-1)
+                            neighbor_b_logprobs = self.neighbors[neighbor_agent_idx].get_b_logprobs(self.next_obs).reshape(-1)
+
+                            kl_div = compute_kl_divergence(current_b_logprobs, neighbor_b_logprobs)
+                            self.writer.add_scalar(f"charts/kl_{self.agent_idx}_{neighbor_agent_idx}", kl_div, self.num_steps)
+                            loss -= comm_coeff * kl_div
+
                     self.optimizer.zero_grad()
                     loss.backward()
                     nn.utils.clip_grad_norm_(self.agent.parameters(), args.max_grad_norm)
@@ -334,13 +363,12 @@ class FederatedEnvironment():
 
 
 def exchange_weights(federated_envs) -> None:
-    pass
-    # agents = []
-    # for env in federated_envs:
-    #     agents.append(self.agent.deepcopy())
+    agents = []
+    for env in federated_envs:
+        agents.append(copy.deepcopy(env.agent))
 
-    # for env in federated_envs:
-    #     env.set_neighbors(agents)
+    for env in federated_envs:
+        env.set_neighbors(agents)
 
 
 def generate_federated_system(args, run_name):
@@ -358,7 +386,7 @@ def generate_federated_system(args, run_name):
 
         federated_envs.append(FederatedEnvironment(args, run_name, envs, agent_idx, agent, optimizer))
 
-    comm_matrix = create_comm_matrix(n_agents=args.n_agents)
+    comm_matrix = create_comm_matrix(n_agents=args.n_agents, comm_coeff=args.comm_coeff)
     
     for env in federated_envs:
         env.set_comm_matrix(comm_matrix)
@@ -400,6 +428,7 @@ if __name__ == "__main__":
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.n_agents) as executor:
         for global_step in range(1, args.global_updates + 1):
+            print("GLOBAL_STEP: ", global_step)
             futures = []
             for i in range(args.n_agents):
                 futures.append(executor.submit(local_update, federated_envs[i], global_step))
