@@ -260,6 +260,10 @@ class FederatedEnvironment():
                     self.previous_version_of_agent = copy.deepcopy(self.agent)
                     loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
 
+                    self.writer.add_scalar(f"charts/loss_fractions/pg_loss", abs(pg_loss / loss), self.num_steps)
+                    self.writer.add_scalar(f"charts/loss_fractions/entropy_loss", abs(entropy_loss * args.ent_coef / loss), self.num_steps)
+                    self.writer.add_scalar(f"charts/loss_fractions/value_loss", abs(v_loss * args.vf_coef / loss), self.num_steps)
+
                     for neighbor_agent_idx in range(args.n_agents):
                         if neighbor_agent_idx != self.agent_idx:
                             comm_coeff = self.comm_matrix[self.agent_idx][neighbor_agent_idx]
