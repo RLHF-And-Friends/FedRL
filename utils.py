@@ -3,6 +3,7 @@ import argparse
 import numpy as np
 import torch
 import json
+from distutils.util import strtobool
 
 
 def parse_args():
@@ -59,7 +60,11 @@ def parse_args():
     parser.add_argument("--update-epochs", type=int, default=4,
         help="the K epochs to update the policy")
     parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="Toggles advantages normalization")
+        help="T oggles advantages normalization")
+    parser.add_argument("--use-clipping", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+        help="Use clipping or KL penalty (adaptive loss)")
+    parser.add_argument("--penalty-coeff", type=bool, default=True,
+        help="KL penalty coefficient")
     parser.add_argument("--clip-coef", type=float, default=0.2,
         help="the surrogate clipping coefficient")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,

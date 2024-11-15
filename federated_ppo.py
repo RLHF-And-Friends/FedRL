@@ -1,6 +1,5 @@
 import random
 import time
-from distutils.util import strtobool
 import copy
 
 import gym
@@ -57,8 +56,11 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 
 
 class Agent(nn.Module):
-    def __init__(self, envs):
+    def __init__(self, envs, args):
         super(Agent, self).__init__()
+        self.args = args
+        self.envs = envs
+
         self.network = nn.Sequential(
             layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
             nn.Tanh(),
@@ -81,18 +83,13 @@ class Agent(nn.Module):
             action = probs.sample()
         return action, probs.log_prob(action), probs.entropy(), self.critic(hidden)
 
-    def get_b_logprobs(self, next_obs):
-        with torch.no_grad():
-            action, logprob, _, value = self.get_action_and_value(next_obs)
-
-        return logprob
-
 
 class FederatedEnvironment():
     def __init__(self, args, run_name, envs, agent_idx, agent, optimizer):
         self.envs = envs
         self.agent_idx = agent_idx
         self.agent = agent
+        self.previous_version_of_agent = None
         self.optimizer = optimizer
         self.comm_matrix = None
         self.neighbors = None
@@ -124,6 +121,7 @@ class FederatedEnvironment():
         self.comm_matrix = comm_matrix
 
     def local_update(self, global_step):
+        args = self.args
         # TRY NOT TO MODIFY: start the game
         for update in range(1, args.local_updates + 1):
             # Annealing the rate if instructed to do so.
@@ -223,9 +221,23 @@ class FederatedEnvironment():
                         mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
 
                     # Policy loss
-                    pg_loss1 = -mb_advantages * ratio
-                    pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
-                    pg_loss = torch.max(pg_loss1, pg_loss2).mean()
+                    if args.use_clipping:
+                        pg_loss1 = -mb_advantages * ratio
+                        pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
+                        pg_loss = torch.max(pg_loss1, pg_loss2).mean()
+                    elif self.previous_version_of_agent:
+                        # print("mb inds shape: ", mb_inds.shape)
+                        pg_loss1 = -mb_advantages * ratio
+                        _, old_b_logprobs, _, _ = self.previous_version_of_agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
+                        _, current_b_logprobs, _, _ = self.agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
+                        # print("old shape: ", old_b_logprobs.shape)
+                        # print("current shape: ", current_b_logprobs.shape)
+                        kl_penalty = compute_kl_divergence(old_b_logprobs, current_b_logprobs)
+                        pg_loss2 = args.penalty_coeff * kl_penalty
+                        self.writer.add_scalar(f"charts/kl_penalty_{self.agent_idx}", kl_penalty, self.num_steps)
+                        pg_loss = (pg_loss1 + pg_loss2).mean()
+                    else:
+                        pg_loss = 0
 
                     # Value loss
                     newvalue = newvalue.view(-1)
@@ -243,14 +255,19 @@ class FederatedEnvironment():
                         v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
 
                     entropy_loss = entropy.mean()
+                    
+                    self.previous_version_of_agent = copy.deepcopy(self.agent)
                     loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
 
                     for neighbor_agent_idx in range(args.n_agents):
                         if neighbor_agent_idx != self.agent_idx:
-                            # print("LEN: ", len(self.comm_matrix[self.agent_idx]))
                             comm_coeff = self.comm_matrix[self.agent_idx][neighbor_agent_idx]
-                            current_b_logprobs = self.agent.get_b_logprobs(self.next_obs).reshape(-1)
-                            neighbor_b_logprobs = self.neighbors[neighbor_agent_idx].get_b_logprobs(self.next_obs).reshape(-1)
+                            current_agent = self.neighbors[self.agent_idx]
+                            # print("b_obs[mb_inds] shape: ", b_obs[mb_inds].shape)
+                            # print("b_actions.long()[mb_inds] shape: ", b_actions.long()[mb_inds].shape)
+                            _, current_b_logprobs, _, _ = self.agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
+                            neighbor_agent = self.neighbors[neighbor_agent_idx]
+                            _, neighbor_b_logprobs, _, _ = neighbor_agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
 
                             kl_div = compute_kl_divergence(current_b_logprobs, neighbor_b_logprobs)
                             self.writer.add_scalar(f"charts/kl_{self.agent_idx}_{neighbor_agent_idx}", kl_div, self.num_steps)
@@ -305,7 +322,7 @@ def generate_federated_system(args, run_name):
         )
         assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
-        agent = Agent(envs).to(device)
+        agent = Agent(envs, args).to(device)
         optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)  
 
         federated_envs.append(FederatedEnvironment(args, run_name, envs, agent_idx, agent, optimizer))
