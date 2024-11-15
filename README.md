@@ -23,7 +23,7 @@
 
 1. В первом окне терминала запускаем процесс обучения следующей командой
     ```
-    python3 federated_ppo.py --total-timesteps=500000 --n-agents=2 --local-updates=16 --num-envs=4 --exp-description="n_agents = 2, local-updates=16" --comm-coeff=10
+    python3 -m federated_ppo.main --total-timesteps=500000 --n-agents=2 --local-updates=16 --num-envs=4 --exp-description="n_agents = 2, local-updates=16" --comm-coeff=10
     ```
 
 2. Во втором окне запускаем тензорборд для визуализации результатов обучения
@@ -46,14 +46,14 @@
 
 1. До масштабирования слагаемых в лоссе:
     ```
-    python3 federated_ppo.py --total-timesteps=1000000 --n-agents=4 --local-updates=16 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json" --use-clipping=True
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=16 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json" --use-clipping=True
     ```
 
     <img src="img/perfomance_before_loss_scaling.png" width="40%">
 
 2. После масштабирования слагаемых:
     ```
-    python3 federated_ppo.py --total-timesteps=1000000 --n-agents=4 --local-updates=16 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json" --use-clipping=True --vf-coef=0.001
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=16 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json" --use-clipping=True --vf-coef=0.001
     ```
 
     <img src="img/perfomance_after_loss_scaling.png" width="40%">

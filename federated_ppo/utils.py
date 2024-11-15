@@ -4,6 +4,9 @@ import numpy as np
 import torch
 import json
 from distutils.util import strtobool
+import gym
+import torch.nn.functional as F
+
 
 
 def parse_args():
@@ -99,3 +102,30 @@ def create_comm_matrix(n_agents, comm_matrix_config):
                 W[left_idx - 1][right_idx - 1] = W[right_idx - 1][left_idx - 1] = coef
 
     return torch.tensor(W, dtype=torch.float32)
+
+
+def compute_kl_divergence(p, q):
+    """
+    Функция для вычисления KL-дивергенции между двумя распределениями p и q.
+    Используем log_softmax для стабильности.
+    """
+    with torch.no_grad():
+        p_log = F.log_softmax(p, dim=-1)
+        q_log = F.log_softmax(q, dim=-1)
+        kl_div = (p_log.exp() * (p_log - q_log)).sum()
+
+        return kl_div
+
+
+def make_env(gym_id, seed, idx, capture_video, run_name=None):
+    def thunk():
+        env = gym.make(gym_id, render_mode="rgb_array")
+        env = gym.wrappers.RecordEpisodeStatistics(env)
+        # if capture_video:
+        #     if idx == 0:
+        #         env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
+        env.action_space.seed(seed)
+        env.observation_space.seed(seed)
+        return env
+
+    return thunk

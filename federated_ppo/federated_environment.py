@@ -1,91 +1,18 @@
-import random
-import time
 import copy
+import time
 
-import gym
-import numpy as np
+
 import torch
-import torch.nn.functional as F
 import torch.nn as nn
-import torch.optim as optim
-from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
-import concurrent.futures
+import numpy as np
 
-from utils import (
-    parse_args,
-    create_comm_matrix,
-)
-
-
-def compute_kl_divergence(p, q):
-    """
-    Функция для вычисления KL-дивергенции между двумя распределениями p и q.
-    Используем log_softmax для стабильности.
-    """
-    with torch.no_grad():
-        p_log = F.log_softmax(p, dim=-1)
-        q_log = F.log_softmax(q, dim=-1)
-        # print(f"p_log: {p_log}, q_log: {q_log}")
-        # kl_div = F.kl_div(p_log, q_log, reduction='batchmean')
-        kl_div = (p_log.exp() * (p_log - q_log)).sum()
-
-        # print("KL div: ", kl_div)
-
-        return kl_div
-
-
-def make_env(gym_id, seed, idx, capture_video, run_name=None):
-    def thunk():
-        env = gym.make(gym_id, render_mode="rgb_array")
-        env = gym.wrappers.RecordEpisodeStatistics(env)
-        # if capture_video:
-        #     if idx == 0:
-        #         env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-        env.action_space.seed(seed)
-        env.observation_space.seed(seed)
-        return env
-
-    return thunk
-
-
-def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
-    torch.nn.init.orthogonal_(layer.weight, std)
-    torch.nn.init.constant_(layer.bias, bias_const)
-    return layer
-
-
-class Agent(nn.Module):
-    def __init__(self, envs, args):
-        super(Agent, self).__init__()
-        self.args = args
-        self.envs = envs
-
-        self.network = nn.Sequential(
-            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
-            nn.Tanh(),
-            layer_init(nn.Linear(64, 64)),
-            nn.Tanh(),
-            layer_init(nn.Linear(64, 64)),
-            nn.Tanh(),
-        )
-        self.actor = layer_init(nn.Linear(64, envs.single_action_space.n), std=0.01)
-        self.critic = layer_init(nn.Linear(64, 1), std=1)
-
-    def get_value(self, x):
-        return self.critic(self.network(x))
-
-    def get_action_and_value(self, x, action=None):
-        hidden = self.network(x)
-        logits = self.actor(hidden)
-        probs = Categorical(logits=logits)
-        if action is None:
-            action = probs.sample()
-        return action, probs.log_prob(action), probs.entropy(), self.critic(hidden)
+from .utils import compute_kl_divergence
 
 
 class FederatedEnvironment():
-    def __init__(self, args, run_name, envs, agent_idx, agent, optimizer):
+    def __init__(self, device, args, run_name, envs, agent_idx, agent, optimizer):
+        self.device = device
         self.envs = envs
         self.agent_idx = agent_idx
         self.agent = agent
@@ -147,8 +74,8 @@ class FederatedEnvironment():
                 # print(envs.step(action.cpu().numpy()))
                 self.next_obs, reward, done, truncations, info = self.envs.step(action.cpu().numpy())
                 # print(torch.tensor(reward).to(device))
-                self.rewards[step] = torch.tensor(reward).to(device).view(-1)
-                self.next_obs, self.next_done = torch.Tensor(self.next_obs).to(device), torch.Tensor(done).to(device)
+                self.rewards[step] = torch.tensor(reward).to(self.device).view(-1)
+                self.next_obs, self.next_done = torch.Tensor(self.next_obs).to(self.device), torch.Tensor(done).to(self.device)
 
                 # print("info: ", info)
                 if len(info) > 0:
@@ -166,7 +93,7 @@ class FederatedEnvironment():
             with torch.no_grad():
                 next_value = self.agent.get_value(self.next_obs).reshape(1, -1)
                 if args.gae:
-                    advantages = torch.zeros_like(self.rewards).to(device)
+                    advantages = torch.zeros_like(self.rewards).to(self.device)
                     lastgaelam = 0
                     for t in reversed(range(args.num_steps)):
                         if t == args.num_steps - 1:
@@ -179,7 +106,7 @@ class FederatedEnvironment():
                         advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
                     returns = advantages + self.values
                 else:
-                    returns = torch.zeros_like(rewards).to(device)
+                    returns = torch.zeros_like(rewards).to(self.device)
                     for t in reversed(range(args.num_steps)):
                         if t == args.num_steps - 1:
                             nextnonterminal = 1.0 - next_done
@@ -312,83 +239,3 @@ class FederatedEnvironment():
     def close(self):
         self.envs.close()
         self.writer.close()
-
-
-def exchange_weights(federated_envs) -> None:
-    agents = []
-    for env in federated_envs:
-        agents.append(copy.deepcopy(env.agent))
-
-    for env in federated_envs:
-        env.set_neighbors(agents)
-
-
-def generate_federated_system(args, run_name):
-    # env setup
-    federated_envs = []
-
-    for agent_idx in range(args.n_agents):
-        envs = gym.vector.SyncVectorEnv(
-            [make_env(args.gym_id, args.seed + i, i, args.capture_video) for i in range(args.num_envs)]
-        )
-        assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
-
-        agent = Agent(envs, args).to(device)
-        optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)  
-
-        federated_envs.append(FederatedEnvironment(args, run_name, envs, agent_idx, agent, optimizer))
-
-    comm_matrix = create_comm_matrix(n_agents=args.n_agents, comm_matrix_config=args.comm_matrix_config)
-
-    for env in federated_envs:
-        env.set_comm_matrix(comm_matrix)
-    
-    exchange_weights(federated_envs)
-
-    return federated_envs
-
-
-def local_update(federated_env, global_step) -> None:
-    federated_env.local_update(global_step)
-
-
-if __name__ == "__main__":
-    args = parse_args()
-    run_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
-    # if args.track:
-    #     import wandb
-
-    #     wandb.init(
-    #         project=args.wandb_project_name,
-    #         entity=args.wandb_entity,
-    #         sync_tensorboard=True,
-    #         config=vars(args),
-    #         name=run_name,
-    #         monitor_gym=True,
-    #         save_code=True,
-    #     )
-
-    # TRY NOT TO MODIFY: seeding
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    torch.backends.cudnn.deterministic = args.torch_deterministic
-
-    device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
-
-    federated_envs = generate_federated_system(args, run_name)
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=args.n_agents) as executor:
-        for global_step in range(1, args.global_updates + 1):
-            print("GLOBAL_STEP: ", global_step)
-            futures = []
-            for i in range(args.n_agents):
-                futures.append(executor.submit(local_update, federated_envs[i], global_step))
-
-            for future in futures:
-                future.result()
-
-            exchange_weights(federated_envs)
-
-    for env in federated_envs:
-        env.close()
