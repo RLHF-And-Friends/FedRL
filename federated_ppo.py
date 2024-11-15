@@ -260,23 +260,29 @@ class FederatedEnvironment():
                     self.previous_version_of_agent = copy.deepcopy(self.agent)
                     loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
 
+                    if args.use_comm_penalty:
+                        kl_sum_penalty = 0
+                        for neighbor_agent_idx in range(args.n_agents):
+                            if neighbor_agent_idx != self.agent_idx:
+                                comm_coeff = self.comm_matrix[self.agent_idx][neighbor_agent_idx]
+                                current_agent = self.neighbors[self.agent_idx]
+                                # print("b_obs[mb_inds] shape: ", b_obs[mb_inds].shape)
+                                # print("b_actions.long()[mb_inds] shape: ", b_actions.long()[mb_inds].shape)
+                                _, current_b_logprobs, _, _ = self.agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
+                                neighbor_agent = self.neighbors[neighbor_agent_idx]
+                                _, neighbor_b_logprobs, _, _ = neighbor_agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
+
+                                kl_div = compute_kl_divergence(current_b_logprobs, neighbor_b_logprobs)
+                                kl_sum_penalty += comm_coeff * kl_div
+                                self.writer.add_scalar(f"charts/kl_{self.agent_idx}_{neighbor_agent_idx}", kl_div, self.num_steps)
+
+                        loss -= kl_sum_penalty
+
                     self.writer.add_scalar(f"charts/loss_fractions/pg_loss", abs(pg_loss / loss), self.num_steps)
                     self.writer.add_scalar(f"charts/loss_fractions/entropy_loss", abs(entropy_loss * args.ent_coef / loss), self.num_steps)
                     self.writer.add_scalar(f"charts/loss_fractions/value_loss", abs(v_loss * args.vf_coef / loss), self.num_steps)
-
-                    for neighbor_agent_idx in range(args.n_agents):
-                        if neighbor_agent_idx != self.agent_idx:
-                            comm_coeff = self.comm_matrix[self.agent_idx][neighbor_agent_idx]
-                            current_agent = self.neighbors[self.agent_idx]
-                            # print("b_obs[mb_inds] shape: ", b_obs[mb_inds].shape)
-                            # print("b_actions.long()[mb_inds] shape: ", b_actions.long()[mb_inds].shape)
-                            _, current_b_logprobs, _, _ = self.agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
-                            neighbor_agent = self.neighbors[neighbor_agent_idx]
-                            _, neighbor_b_logprobs, _, _ = neighbor_agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
-
-                            kl_div = compute_kl_divergence(current_b_logprobs, neighbor_b_logprobs)
-                            self.writer.add_scalar(f"charts/kl_{self.agent_idx}_{neighbor_agent_idx}", kl_div, self.num_steps)
-                            loss -= comm_coeff * kl_div
+                    if args.use_comm_penalty:
+                        self.writer.add_scalar(f"charts/loss_fractions/kl_penalty_loss", abs(kl_sum_penalty / loss), self.num_steps)
 
                     self.optimizer.zero_grad()
                     loss.backward()
