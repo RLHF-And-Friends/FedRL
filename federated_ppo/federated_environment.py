@@ -203,7 +203,7 @@ class FederatedEnvironment():
                                 kl_sum_penalty += comm_coeff * kl_div
                                 self.writer.add_scalar(f"charts/kl_{self.agent_idx}_{neighbor_agent_idx}", kl_div, self.num_steps)
 
-                        loss -= kl_sum_penalty
+                        loss += kl_sum_penalty
 
                     self.writer.add_scalar(f"charts/loss_fractions/pg_loss", abs(pg_loss / loss), self.num_steps)
                     self.writer.add_scalar(f"charts/loss_fractions/entropy_loss", abs(entropy_loss * args.ent_coef / loss), self.num_steps)
