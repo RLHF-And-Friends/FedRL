@@ -2,3 +2,4 @@ videos/
 wandb/
 runs/
 venv/
+__pycache__/

@@ -48,8 +48,10 @@ def parse_args():
         help="the number of parallel game environments")
     parser.add_argument("--num-steps", type=int, default=128,
         help="the number of steps to run in each environment per policy rollout")
-    parser.add_argument("--comm-coeff", type=float, default=1.0,
-        help="communication coefficient")
+    parser.add_argument("--num-minibatches", type=int, default=4,
+        help="the number of mini-batches")
+    parser.add_argument("--update-epochs", type=int, default=4,
+        help="the K epochs to update the policy")
     parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument("--gae", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
@@ -58,17 +60,13 @@ def parse_args():
         help="the discount factor gamma")
     parser.add_argument("--gae-lambda", type=float, default=0.95,
         help="the lambda for the general advantage estimation")
-    parser.add_argument("--num-minibatches", type=int, default=4,
-        help="the number of mini-batches")
-    parser.add_argument("--update-epochs", type=int, default=4,
-        help="the K epochs to update the policy")
     parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="T oggles advantages normalization")
     parser.add_argument("--use-clipping", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Use clipping or KL penalty (adaptive loss)")
     parser.add_argument("--use-comm-penalty", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Penalize for kl divergence with neighbors or not") 
-    parser.add_argument("--penalty-coeff", type=bool, default=True,
+    parser.add_argument("--penalty-coeff", type=float, default=1.0,
         help="KL penalty coefficient")
     parser.add_argument("--clip-coef", type=float, default=0.2,
         help="the surrogate clipping coefficient")
@@ -105,16 +103,11 @@ def create_comm_matrix(n_agents, comm_matrix_config):
 
 
 def compute_kl_divergence(p, q):
-    """
-    Функция для вычисления KL-дивергенции между двумя распределениями p и q.
-    Используем log_softmax для стабильности.
-    """
-    with torch.no_grad():
-        p_log = F.log_softmax(p, dim=-1)
-        q_log = F.log_softmax(q, dim=-1)
-        kl_div = (p_log.exp() * (p_log - q_log)).sum()
+    p_log = F.log_softmax(p, dim=-1)
+    q_log = F.log_softmax(q, dim=-1)
+    kl_div = (p_log.exp() * (p_log - q_log)).sum()
 
-        return kl_div
+    return kl_div
 
 
 def make_env(gym_id, seed, idx, capture_video, run_name=None):
