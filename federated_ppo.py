@@ -152,7 +152,8 @@ class FederatedEnvironment():
 
                 # print("info: ", info)
                 if len(info) > 0:
-                    for i in range(args.num_envs):
+                    # for i in range(args.num_envs):
+                    for i in range(1):
                         if info['_final_observation'][i]:
                             item = info['final_info'][i]
                             if "episode" in item.keys():
