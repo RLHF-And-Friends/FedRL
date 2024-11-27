@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.distributions.categorical import Categorical
 import numpy as np
+import copy
 
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
@@ -38,3 +39,11 @@ class Agent(nn.Module):
         if action is None:
             action = probs.sample()
         return action, probs.log_prob(action), probs.entropy(), self.critic(hidden)
+
+    def __deepcopy__(self, memo):
+        copied_agent = Agent(self.envs, self.args)
+        copied_agent.network = copy.deepcopy(self.network, memo)
+        copied_agent.actor = copy.deepcopy(self.actor, memo)
+        copied_agent.critic = copy.deepcopy(self.critic, memo)
+        # Exclude self.envs from deepcopy
+        return copied_agent
