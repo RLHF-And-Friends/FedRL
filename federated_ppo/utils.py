@@ -6,6 +6,7 @@ import json
 from distutils.util import strtobool
 import gym
 import torch.nn.functional as F
+from custom_envs.classic_control.cartpole import CustomCartPoleEnv
 
 
 
@@ -20,6 +21,8 @@ def parse_args():
         help="Experiment description")
     parser.add_argument("--gym-id", type=str, default="CartPole-v1",
         help="the id of the gym environment")
+    parser.add_argument("--use-custom-env", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=False,
+        help="use custom environment or not")
     parser.add_argument("--learning-rate", type=float, default=2.5e-4,
         help="the learning rate of the optimizer")
     parser.add_argument("--seed", type=int, default=1,
@@ -44,6 +47,7 @@ def parse_args():
     parser.add_argument("--n-agents", type=int, default=2,
         help="number of agents")
     parser.add_argument("--comm-matrix-config", type=str, default=None, help="path to comm_matrix json-config")
+    parser.add_argument("--env-parameters-config", type=str, default=None, help="path to cartpole environment json-config")
     parser.add_argument("--local-updates", type=int, default=16,
         help="parameter E from chinese article")
     parser.add_argument("--num-envs", type=int, default=4,
@@ -104,6 +108,13 @@ def create_comm_matrix(n_agents, comm_matrix_config):
     return torch.tensor(W, dtype=torch.float32)
 
 
+def extract_env_parameters(env_parameters_config, agent_idx):
+    with open(env_parameters_config, 'r') as file:
+        data = json.load(file)
+        
+        return data["cartpole_parameters"][str(agent_idx + 1)] 
+
+
 def compute_kl_divergence(p, q):
     p_log = F.log_softmax(p, dim=-1)
     q_log = F.log_softmax(q, dim=-1)
@@ -112,9 +123,15 @@ def compute_kl_divergence(p, q):
     return kl_div
 
 
-def make_env(gym_id, seed, idx, capture_video, run_name=None):
+def make_env(env_parameters_config, gym_id, seed, idx, capture_video, run_name=None):
     def thunk():
-        env = gym.make(gym_id, render_mode="rgb_array")
+        if env_parameters_config is not None:
+            env_parameters = extract_env_parameters(env_parameters_config, idx)
+            print("ENV: ", env_parameters)
+            env = CustomCartPoleEnv(render_mode="rgb_array", **env_parameters)
+        else:
+            env = gym.make(gym_id, render_mode="rgb_array")
+
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:

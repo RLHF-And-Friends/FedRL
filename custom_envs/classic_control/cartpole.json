@@ -1,0 +1,28 @@
+{
+    "cartpole_parameters": {
+        "1": {
+            "gravity": 9.8,
+            "masscart": 4.0,
+            "masspole": 1.0,
+            "length": 10
+        },
+        "2": {
+            "gravity": 9.8,
+            "masscart": 4.0,
+            "masspole": 1.0,
+            "length": 10
+        },
+        "3": {
+            "gravity": 10000.0,
+            "masscart": 1000000000.0,
+            "masspole": 0.000001,
+            "length": 0.5
+        },
+        "4": {
+            "gravity": 10000.0,
+            "masscart": 100000000.0,
+            "masspole": 0.000001,
+            "length": 0.5
+        }
+    }
+}

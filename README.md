@@ -115,11 +115,11 @@
 
 Изначально я по ошибке считал kl-дивергенцию без подсчёта градиентов:
 
-<img src="img/fuckup_no_grad_kl.png" width="40%">
+<img src="img/fuckups/fuckup_no_grad_kl.png" width="40%">
 
 После того, как градиент начал считаться по этим вычислениям, получилась следующая картина:
 
-<img src="img/fuckup_no_grad_kl_charts.png" width="40%">
+<img src="img/fuckups/fuckup_no_grad_kl_charts.png" width="40%">
 
 Запуск этого обучения:
 
@@ -173,8 +173,80 @@ Cетап 2 (клиппинг без суммы KL-дивергенций):
 
 - без сглаживания
 
-<img src="img/exp_1_no_smoothing.png" width="40%">
+<img src="img/exp_1/exp_1_no_smoothing.png" width="40%">
 
 - со сглаживанием
 
-<img src="img/exp_1_with_smoothing.png" width="40%">
+<img src="img/exp_1/exp_1_with_smoothing.png" width="40%">
+
+**Вывод:** 2 и 4 сетапы учатся лучше, если сглаживать соответствующие графики обучения. То есть с суммой KL-дивергенций обучение идёт медленнее. Результат соответствует ожиданиям, т.к. сумма KL-дивергенций должна улучшать устойчивость/робастность обучения. Вклад суммы KL-дивергенций мы будем оценивать при обучении агентов в гетерогенных средах.
+
+
+#### Experiment 2
+
+Сетап 1 (клиппинг без суммы KL-дивергенций, 1024 локальных апдейтов):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=1024 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json"  --vf-coef=0.001 --exp-name=exp_2 --setup-id=setup_1 --use-clipping=True --use-comm-penalty=False
+
+Сетап 2 (клиппинг без суммы KL-дивергенций, 256 локальных апдейтов):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=256 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json"  --vf-coef=0.001 --exp-name=exp_2 --setup-id=setup_2 --use-clipping=True --use-comm-penalty=False
+
+Сетап 3 (клиппинг без суммы KL-дивергенций, 16 локальных апдейтов):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=16 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json"  --vf-coef=0.001 --exp-name=exp_2 --setup-id=setup_3 --use-clipping=True --use-comm-penalty=False
+
+**Результат:**
+
+<img src="img/exp_2/exp_2_local_updates_effect.png" width="40%">
+
+**Замечание.** Это не означает, что агенты лучше учатся, из-за того что они обмениваются друг с другом информацией, поскольку выставлен флаг *--use-comm-penalty=False*. 
+
+**Вывод:** Из того, что явно зависит от числа локальных шагов — это learning rate. Мы его логгируем. Заметим, что в трёх сетапах разница следующая:
+
+<img src="img/exp_2/exp_2_lr_comparison.png" width="40%">
+
+Видим, что lr уходит в отрицательные значения — это неправильно по определению градиентного спуска, то есть противоречит основной теореме мат. анализа. Обработаем этот кейс в коде. Запустим третий аналогичный эксп, но уже с использованием суммы KL-дивергенций, то есть агенты будут обмениваться друг с другом своими распределениями через каждые local_updates локальных обнавлений.
+
+
+#### Experiment 3
+
+Сетап 1 (клиппинг с суммой KL-дивергенций, 576 локальных апдейтов):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=576 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json"  --vf-coef=0.001 --exp-name=exp_3 --setup-id=setup_1 --use-clipping=True --use-comm-penalty=True
+
+Сетап 2 (клиппинг с суммой KL-дивергенций, 128 локальных апдейтов):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=128 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json"  --vf-coef=0.001 --exp-name=exp_3 --setup-id=setup_2 --use-clipping=True --use-comm-penalty=True
+
+Сетап 3 (клиппинг с суммой KL-дивергенций, 16 локальных апдейтов):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=16 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json"  --vf-coef=0.001 --exp-name=exp_3 --setup-id=setup_3 --use-clipping=True --use-comm-penalty=True
+
+
+<img src="img/exp_3/episodic_return.png" width="40%">
+
+**Вывод:** чем чаще агенты обмениваются друг с другом информацией, тем лучше идёт обучение.
+
+
+#### Experiment 4
+
+По сути, аналог второго эксперимента, но с фиксом отрицательного lr. Ожидаем, что сильной разницы между сетапами не будет (в отличие от третьего эксперимента).
+
+Сетап 1 (клиппинг без суммы KL-дивергенций, 576 локальных апдейтов):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=576 --num-envs=4 --vf-coef=0.001 --exp-name=exp_4 --setup-id=setup_1 --use-clipping=True --use-comm-penalty=False
+
+Сетап 2 (клиппинг без суммы KL-дивергенций, 128 локальных апдейтов):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=128 --num-envs=4 --vf-coef=0.001 --exp-name=exp_4 --setup-id=setup_2 --use-clipping=True --use-comm-penalty=False
+
+Сетап 3 (клиппинг без суммы KL-дивергенций, 16 локальных апдейтов):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=16 --num-envs=4 --vf-coef=0.001 --exp-name=exp_4 --setup-id=setup_3 --use-clipping=True --use-comm-penalty=False
+
+**Результат:**
+
+<img src="img/exp_4/episodic_return.png" width="40%">
+
+**Вывод:** наши ожидания подтвердились. В случае, если агенты не обмениваются информацией друг с другом (если нет суммы KL-дивергенций в лоссе), качество обучения не зависит от числа локальных обновлений.

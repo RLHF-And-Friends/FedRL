@@ -34,7 +34,7 @@ def generate_federated_system(device, args, run_name):
 
     for agent_idx in range(args.n_agents):
         envs = gym.vector.SyncVectorEnv(
-            [make_env(args.gym_id, args.seed + i, i, args.capture_video) for i in range(args.num_envs)]
+            [make_env(args.env_parameters_config, args.gym_id, args.seed + i, i, args.capture_video) for i in range(args.num_envs)]
         )
         assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
@@ -43,10 +43,11 @@ def generate_federated_system(device, args, run_name):
 
         federated_envs.append(FederatedEnvironment(device, args, run_name, envs, agent_idx, agent, optimizer))
 
-    comm_matrix = create_comm_matrix(n_agents=args.n_agents, comm_matrix_config=args.comm_matrix_config)
+    if args.use_comm_penalty:
+        comm_matrix = create_comm_matrix(n_agents=args.n_agents, comm_matrix_config=args.comm_matrix_config)
 
-    for env in federated_envs:
-        env.set_comm_matrix(comm_matrix)
+        for env in federated_envs:
+            env.set_comm_matrix(comm_matrix)
     
     exchange_weights(federated_envs)
 
