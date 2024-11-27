@@ -14,6 +14,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
         help="the name of this experiment")
+    parser.add_argument("--setup-id", type=str, default=os.path.basename(__file__).rstrip(".py"),
+        help="the id of the setup")
     parser.add_argument("--exp-description", type=str, default="Empty description",
         help="Experiment description")
     parser.add_argument("--gym-id", type=str, default="CartPole-v1",

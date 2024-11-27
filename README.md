@@ -140,3 +140,41 @@
 <img src="img/kl_penalty_fix_2_setups_comparison.png" width="40%">
 
 То есть большой вес в матрице коммуникаций сильно регуляризует сумму kl-дивергенций и потому агенты учатся хуже $-$ нужно масштабировать коэф-ты регуляризации.
+
+- Ограничение на максимальную длину эпизода
+
+    Уберём сглаживание и увидим следующую картину:
+
+    <img src="img/max_episodic_length_no_smoothing.png" width="40%">
+
+### Эксперименты
+
+#### Experiment 1
+
+Cетап 1 (клиппинг с суммой KL-дивергенций):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=16 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json" --vf-coef=0.001 --exp-name=exp_1 --setup-id=setup_1 --use-clipping=True --use-comm-penalty=True
+
+Cетап 2 (клиппинг без суммы KL-дивергенций):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=16 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json" --vf-coef=0.001 --exp-name=exp_1 --setup-id=setup_2 --setup-id=setup_2 --use-clipping=True --use-comm-penalty=False
+
+Сетап 3 (сумма KL-дивергенций без клиппинги):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=16 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json" --vf-coef=0.001 --exp-name=exp_1 --setup-id=setup_3 --use-clipping=False --use-comm-penalty=True
+
+Сетап 4 (без суммы KL-дивергенций и клиппинга):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=16 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json" --vf-coef=0.001 --exp-name=exp_1 --setup-id=setup_4 --use-clipping=False --use-comm-penalty=False
+
+**Замечание.** Без клиппинга означает, что используется Adaptive KL Loss — Kl-дивергенция текущего и предыдущего распределения стратегии.
+
+**Результат:**
+
+- без сглаживания
+
+<img src="img/exp_1_no_smoothing.png" width="40%">
+
+- со сглаживанием
+
+<img src="img/exp_1_with_smoothing.png" width="40%">
