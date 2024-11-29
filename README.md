@@ -250,3 +250,97 @@ Cетап 2 (клиппинг без суммы KL-дивергенций):
 <img src="img/exp_4/episodic_return.png" width="40%">
 
 **Вывод:** наши ожидания подтвердились. В случае, если агенты не обмениваются информацией друг с другом (если нет суммы KL-дивергенций в лоссе), качество обучения не зависит от числа локальных обновлений.
+
+
+#### Experiment 5
+
+По сути, MDPO - это PPO с KL Penalty без последних двух слагаемых в лоссе:
+
+<img src="img/exp_5/ppo_objective.png" width="40%">
+
+, где
+
+<img src="img/exp_5/L_clip_cases.png" width="40%">
+
+Сетап 1 (PPO с клиппингом, с суммой KL-дивергенций):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=576 --num-envs=4 --vf-coef=0.001 --exp-name=exp_5 --setup-id=setup_1 --use-clipping=True --use-mdpo=False --use-comm-penalty=True --comm-matrix-config="comm_matrices/4_agents.json"
+
+Сетап 2 (MDPO, с суммой KL-дивергенций):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=128 --num-envs=4 --vf-coef=0.001 --exp-name=exp_5 --setup-id=setup_2 --use-clipping=False --use-mdpo=True --use-comm-penalty=True --comm-matrix-config="comm_matrices/4_agents.json"
+
+Сетап 3 (PPO с клиппингом, без суммы KL-дивергенций):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=576 --num-envs=4 --vf-coef=0.001 --exp-name=exp_5 --setup-id=setup_3 --use-clipping=True --use-mdpo=False --use-comm-penalty=False
+
+Сетап 4 (MDPO, без суммы KL-дивергенций):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=128 --num-envs=4 --vf-coef=0.001 --exp-name=exp_5 --setup-id=setup_4 --use-clipping=False --use-mdpo=True --use-comm-penalty=False
+
+Сетап 5 (PPO с клиппингом, с суммой KL-дивергенций):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=576 --num-envs=4 --vf-coef=0.001 --exp-name=exp_5 --setup-id=setup_5 --use-clipping=True --use-mdpo=False --use-comm-penalty=True --comm-penalty-coeff=10.0 --comm-matrix-config="comm_matrices/4_agents.json"
+
+Сетап 6 (MDPO, с суммой KL-дивергенций):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=128 --num-envs=4 --vf-coef=0.001 --exp-name=exp_5 --setup-id=setup_6 --use-clipping=False --use-mdpo=True --use-comm-penalty=True --comm-penalty-coeff=10.0 --comm-matrix-config="comm_matrices/4_agents.json"
+
+
+# Теория
+
+## Градиент функции лосса для MDPO
+
+Для функции лосса:
+
+$$
+L_{\text{policy}} = - \mathbb{E}_{s, a} \left[ \frac{\pi_\theta(a|s)}{\pi_{\theta_k}(a|s)} A^{\theta_k}(s, a) \right],
+$$
+
+градиент по параметрам $\theta$ можно вычислить следующим образом.
+
+1. Обозначим:
+   $$
+   r(a|s) = \frac{\pi_\theta(a|s)}{\pi_{\theta_k}(a|s)}.
+   $$
+   Тогда лосс принимает вид:
+   $$
+   L_{\text{policy}} = - \mathbb{E}_{s, a} \left[ r(a|s) A^{\theta_k}(s, a) \right].
+   $$
+
+2. Градиент по $\theta$:
+   $$
+   \nabla_\theta L_{\text{policy}} = - \nabla_\theta \mathbb{E}_{s, a} \left[ r(a|s) A^{\theta_k}(s, a) \right].
+   $$
+
+3. Используем градиент вероятностного отношения:
+   $$
+   \nabla_\theta r(a|s) = r(a|s) \nabla_\theta \log \pi_\theta(a|s).
+   $$
+
+4. Подставляем $\nabla_\theta r(a|s)$:
+$$
+\nabla_\theta L_{\text{policy}} = - \mathbb{E}_{s, a} \left[ A^{\theta_k}(s, a) \cdot r(a|s) \cdot \nabla_\theta \log \pi_\theta(a|s) \right].
+$$
+
+Или, заменяя $r(a|s)$ обратно:
+$$
+\nabla_\theta L_{\text{policy}} = - \mathbb{E}_{s, a} \left[ \frac{\pi_\theta(a|s)}{\pi_{\theta_k}(a|s)} A^{\theta_k}(s, a) \cdot \nabla_\theta \log \pi_\theta(a|s) \right].
+$$
+
+Финальный градиент:
+$$
+\nabla_\theta L_{\text{policy}} = - \mathbb{E}_{s, a} \left[ \frac{\pi_\theta(a|s)}{\pi_{\theta_k}(a|s)} \cdot A^{\theta_k}(s, a) \cdot \nabla_\theta \log \pi_\theta(a|s) \right].
+$$
+
+Таким образом, это то самое первое слагаемое в градиенте для MDPO:
+
+$$
+\nabla_\theta \Psi(\theta, \theta_k) \big|_{\theta = \theta_k^{(i)}} =
+\mathbb{E}_{s \sim \rho_{\pi_{\theta_k}}, a \sim \pi_{\theta_k}} \left[
+\frac{\pi_{\theta_k^{(i)}}(a|s)}{\pi_{\theta_k}(a|s)} \nabla_\theta \log \pi_{\theta_k^{(i)}}(a|s) A^{\theta_k}(s, a)
+\right] 
+- \frac{1}{t_k} \mathbb{E}_{s \sim \rho_{\pi_{\theta_k}}} \left[
+\nabla_\theta \text{KL}(s; \pi_\theta, \pi_{\theta_k}) \big|_{\theta = \theta_k^{(i)}}
+\right]
+$$

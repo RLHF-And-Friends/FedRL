@@ -68,10 +68,14 @@ def parse_args():
         help="the lambda for the general advantage estimation")
     parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="T oggles advantages normalization")
+    parser.add_argument("--use-mdpo", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=False,
+        help="Use MDPO instead of PPO")
     parser.add_argument("--use-clipping", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Use clipping or KL penalty (adaptive loss)")
     parser.add_argument("--use-comm-penalty", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Penalize for kl divergence with neighbors or not") 
+    parser.add_argument("--comm-penalty-coeff",  type=float, default=1.0,
+        help="coefficient of the communication penalty") 
     parser.add_argument("--penalty-coeff", type=float, default=1.0,
         help="KL penalty coefficient")
     parser.add_argument("--clip-coef", type=float, default=0.2,

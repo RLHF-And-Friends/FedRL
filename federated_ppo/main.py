@@ -86,7 +86,7 @@ if __name__ == "__main__":
     federated_envs = generate_federated_system(device, args, run_name)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.n_agents) as executor:
-        for global_step in range(1, args.global_updates + 1):
+        for global_step in range(0, args.global_updates):
             print("GLOBAL_STEP: ", global_step)
             futures = []
             for i in range(args.n_agents):

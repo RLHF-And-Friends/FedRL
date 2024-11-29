@@ -16,7 +16,7 @@ class FederatedEnvironment():
         self.envs = envs
         self.agent_idx = agent_idx
         self.agent = agent
-        self.previous_version_of_agent = None
+        self.previous_version_of_agent = copy.deepcopy(self.agent)
         self.optimizer = optimizer
         self.comm_matrix = None
         self.neighbors = None
@@ -151,10 +151,14 @@ class FederatedEnvironment():
 
                     # Policy loss
                     if args.use_clipping:
-                        pg_loss1 = -mb_advantages * ratio
+                        pg_loss1 = -ratio * mb_advantages
                         pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
                         pg_loss = torch.max(pg_loss1, pg_loss2).mean()
-                    elif self.previous_version_of_agent:
+                    
+                    if not args.use_clipping or args.use_mdpo:
+                        '''
+                        For first batch pg_loss = 0 since self.previous_version_of_agent is equal to self.agent
+                        '''
                         # print("mb inds shape: ", mb_inds.shape)
                         pg_loss1 = -mb_advantages * ratio
                         _, old_b_logprobs, _, _ = self.previous_version_of_agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
@@ -165,28 +169,29 @@ class FederatedEnvironment():
                         pg_loss2 = args.penalty_coeff * kl_penalty
                         self.writer.add_scalar(f"charts/kl_penalty_{self.agent_idx}", kl_penalty, self.num_steps)
                         pg_loss = (pg_loss1 + pg_loss2).mean()
-                    else:
-                        pg_loss = 0
 
-                    # Value loss
-                    newvalue = newvalue.view(-1)
-                    if args.clip_vloss:
-                        v_loss_unclipped = (newvalue - b_returns[mb_inds]) ** 2
-                        v_clipped = b_values[mb_inds] + torch.clamp(
-                            newvalue - b_values[mb_inds],
-                            -args.clip_coef,
-                            args.clip_coef,
-                        )
-                        v_loss_clipped = (v_clipped - b_returns[mb_inds]) ** 2
-                        v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
-                        v_loss = 0.5 * v_loss_max.mean()
-                    else:
-                        v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
+                    if not args.use_mdpo:
+                        # Value loss
+                        newvalue = newvalue.view(-1)
+                        if args.clip_vloss:
+                            v_loss_unclipped = (newvalue - b_returns[mb_inds]) ** 2
+                            v_clipped = b_values[mb_inds] + torch.clamp(
+                                newvalue - b_values[mb_inds],
+                                -args.clip_coef,
+                                args.clip_coef,
+                            )
+                            v_loss_clipped = (v_clipped - b_returns[mb_inds]) ** 2
+                            v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
+                            v_loss = 0.5 * v_loss_max.mean()
+                        else:
+                            v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
 
-                    entropy_loss = entropy.mean()
+                        entropy_loss = entropy.mean()
                     
-                    self.previous_version_of_agent = copy.deepcopy(self.agent)
-                    loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
+                    if args.use_mdpo:
+                        loss = pg_loss
+                    else:
+                        loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
 
                     if args.use_comm_penalty:
                         kl_sum_penalty = 0
@@ -204,18 +209,23 @@ class FederatedEnvironment():
                                 kl_sum_penalty += comm_coeff * kl_div
                                 self.writer.add_scalar(f"charts/kl_{self.agent_idx}_{neighbor_agent_idx}", kl_div, self.num_steps)
 
-                        loss += kl_sum_penalty
+                        loss += args.comm_penalty_coeff * kl_sum_penalty
 
                     self.writer.add_scalar(f"charts/loss_fractions/pg_loss", abs(pg_loss / loss), self.num_steps)
-                    self.writer.add_scalar(f"charts/loss_fractions/entropy_loss", abs(entropy_loss * args.ent_coef / loss), self.num_steps)
-                    self.writer.add_scalar(f"charts/loss_fractions/value_loss", abs(v_loss * args.vf_coef / loss), self.num_steps)
                     if args.use_comm_penalty:
                         self.writer.add_scalar(f"charts/loss_fractions/kl_penalty_loss", abs(kl_sum_penalty / loss), self.num_steps)
+                                        
+                    if not args.use_mdpo:
+                        self.writer.add_scalar(f"charts/loss_fractions/entropy_loss", abs(entropy_loss * args.ent_coef / loss), self.num_steps)
+                        self.writer.add_scalar(f"charts/loss_fractions/value_loss", abs(v_loss * args.vf_coef / loss), self.num_steps)
+
 
                     self.optimizer.zero_grad()
                     loss.backward()
                     nn.utils.clip_grad_norm_(self.agent.parameters(), args.max_grad_norm)
                     self.optimizer.step()
+
+                self.previous_version_of_agent = copy.deepcopy(self.agent)
 
                 if args.target_kl is not None:
                     if approx_kl > args.target_kl:
@@ -227,12 +237,14 @@ class FederatedEnvironment():
 
             # TRY NOT TO MODIFY: record rewards for plotting purposes
             self.writer.add_scalar("charts/learning_rate", self.optimizer.param_groups[0]["lr"], self.num_steps)
-            self.writer.add_scalar("losses/value_loss", v_loss.item(), self.num_steps)
             self.writer.add_scalar("losses/policy_loss", pg_loss.item(), self.num_steps)
-            self.writer.add_scalar("losses/entropy", entropy_loss.item(), self.num_steps)
-            self.writer.add_scalar("losses/old_approx_kl", old_approx_kl.item(), self.num_steps)
-            self.writer.add_scalar("losses/approx_kl", approx_kl.item(), self.num_steps)
-            self.writer.add_scalar("losses/clipfrac", np.mean(clipfracs), self.num_steps)
+            if not args.use_mdpo:
+                self.writer.add_scalar("losses/value_loss", v_loss.item(), self.num_steps)
+                self.writer.add_scalar("losses/entropy", entropy_loss.item(), self.num_steps)
+                self.writer.add_scalar("losses/old_approx_kl", old_approx_kl.item(), self.num_steps)
+                self.writer.add_scalar("losses/approx_kl", approx_kl.item(), self.num_steps)
+                self.writer.add_scalar("losses/clipfrac", np.mean(clipfracs), self.num_steps)
+
             self.writer.add_scalar("losses/explained_variance", explained_var, self.num_steps)
             print("SPS:", int(self.num_steps / (time.time() - self.start_time)))
             self.writer.add_scalar("charts/SPS", int(self.num_steps / (time.time() - self.start_time)), self.num_steps)
