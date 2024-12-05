@@ -170,26 +170,26 @@ class FederatedEnvironment():
                         self.writer.add_scalar(f"charts/kl_penalty_{self.agent_idx}", kl_penalty, self.num_steps)
                         pg_loss = (pg_loss1 + pg_loss2).mean()
 
-                    if not args.use_mdpo:
-                        # Value loss
-                        newvalue = newvalue.view(-1)
-                        if args.clip_vloss:
-                            v_loss_unclipped = (newvalue - b_returns[mb_inds]) ** 2
-                            v_clipped = b_values[mb_inds] + torch.clamp(
-                                newvalue - b_values[mb_inds],
-                                -args.clip_coef,
-                                args.clip_coef,
-                            )
-                            v_loss_clipped = (v_clipped - b_returns[mb_inds]) ** 2
-                            v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
-                            v_loss = 0.5 * v_loss_max.mean()
-                        else:
-                            v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
+                    # Value loss
+                    newvalue = newvalue.view(-1)
+                    if not args.use_mdpo and args.clip_vloss:
+                        v_loss_unclipped = (newvalue - b_returns[mb_inds]) ** 2
+                        v_clipped = b_values[mb_inds] + torch.clamp(
+                            newvalue - b_values[mb_inds],
+                            -args.clip_coef,
+                            args.clip_coef,
+                        )
+                        v_loss_clipped = (v_clipped - b_returns[mb_inds]) ** 2
+                        v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
+                        v_loss = 0.5 * v_loss_max.mean()
+                    else:
+                        v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
 
+                    if not args.use_mdpo:
                         entropy_loss = entropy.mean()
                     
                     if args.use_mdpo:
-                        loss = pg_loss
+                        loss = pg_loss + v_loss * args.vf_coef
                     else:
                         loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
 

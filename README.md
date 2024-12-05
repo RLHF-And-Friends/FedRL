@@ -147,23 +147,23 @@
 
     <img src="img/max_episodic_length_no_smoothing.png" width="40%">
 
-### Эксперименты
+## Эксперименты
 
-#### Experiment 1
+### Experiment 1
 
-Cетап 1 (клиппинг с суммой KL-дивергенций):
+#### Cетап 1 (клиппинг с суммой KL-дивергенций):
 
     python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=16 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json" --vf-coef=0.001 --exp-name=exp_1 --setup-id=setup_1 --use-clipping=True --use-comm-penalty=True
 
-Cетап 2 (клиппинг без суммы KL-дивергенций):
+#### Cетап 2 (клиппинг без суммы KL-дивергенций):
 
     python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=16 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json" --vf-coef=0.001 --exp-name=exp_1 --setup-id=setup_2 --setup-id=setup_2 --use-clipping=True --use-comm-penalty=False
 
-Сетап 3 (сумма KL-дивергенций без клиппинги):
+#### Сетап 3 (сумма KL-дивергенций без клиппинги):
 
     python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=16 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json" --vf-coef=0.001 --exp-name=exp_1 --setup-id=setup_3 --use-clipping=False --use-comm-penalty=True
 
-Сетап 4 (без суммы KL-дивергенций и клиппинга):
+#### Сетап 4 (без суммы KL-дивергенций и клиппинга):
 
     python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=16 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json" --vf-coef=0.001 --exp-name=exp_1 --setup-id=setup_4 --use-clipping=False --use-comm-penalty=False
 
@@ -182,17 +182,17 @@ Cетап 2 (клиппинг без суммы KL-дивергенций):
 **Вывод:** 2 и 4 сетапы учатся лучше, если сглаживать соответствующие графики обучения. То есть с суммой KL-дивергенций обучение идёт медленнее. Результат соответствует ожиданиям, т.к. сумма KL-дивергенций должна улучшать устойчивость/робастность обучения. Вклад суммы KL-дивергенций мы будем оценивать при обучении агентов в гетерогенных средах.
 
 
-#### Experiment 2
+### Experiment 2
 
-Сетап 1 (клиппинг без суммы KL-дивергенций, 1024 локальных апдейтов):
+#### Сетап 1 (клиппинг без суммы KL-дивергенций, 1024 локальных апдейтов):
 
     python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=1024 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json"  --vf-coef=0.001 --exp-name=exp_2 --setup-id=setup_1 --use-clipping=True --use-comm-penalty=False
 
-Сетап 2 (клиппинг без суммы KL-дивергенций, 256 локальных апдейтов):
+#### Сетап 2 (клиппинг без суммы KL-дивергенций, 256 локальных апдейтов):
 
     python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=256 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json"  --vf-coef=0.001 --exp-name=exp_2 --setup-id=setup_2 --use-clipping=True --use-comm-penalty=False
 
-Сетап 3 (клиппинг без суммы KL-дивергенций, 16 локальных апдейтов):
+#### Сетап 3 (клиппинг без суммы KL-дивергенций, 16 локальных апдейтов):
 
     python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=16 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json"  --vf-coef=0.001 --exp-name=exp_2 --setup-id=setup_3 --use-clipping=True --use-comm-penalty=False
 
@@ -209,17 +209,17 @@ Cетап 2 (клиппинг без суммы KL-дивергенций):
 Видим, что lr уходит в отрицательные значения — это неправильно по определению градиентного спуска, то есть противоречит основной теореме мат. анализа. Обработаем этот кейс в коде. Запустим третий аналогичный эксп, но уже с использованием суммы KL-дивергенций, то есть агенты будут обмениваться друг с другом своими распределениями через каждые local_updates локальных обнавлений.
 
 
-#### Experiment 3
+### Experiment 3
 
-Сетап 1 (клиппинг с суммой KL-дивергенций, 576 локальных апдейтов):
+#### Сетап 1 (клиппинг с суммой KL-дивергенций, 576 локальных апдейтов):
 
     python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=576 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json"  --vf-coef=0.001 --exp-name=exp_3 --setup-id=setup_1 --use-clipping=True --use-comm-penalty=True
 
-Сетап 2 (клиппинг с суммой KL-дивергенций, 128 локальных апдейтов):
+#### Сетап 2 (клиппинг с суммой KL-дивергенций, 128 локальных апдейтов):
 
     python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=128 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json"  --vf-coef=0.001 --exp-name=exp_3 --setup-id=setup_2 --use-clipping=True --use-comm-penalty=True
 
-Сетап 3 (клиппинг с суммой KL-дивергенций, 16 локальных апдейтов):
+#### Сетап 3 (клиппинг с суммой KL-дивергенций, 16 локальных апдейтов):
 
     python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=16 --num-envs=4 --comm-matrix-config="comm_matrices/4_agents.json"  --vf-coef=0.001 --exp-name=exp_3 --setup-id=setup_3 --use-clipping=True --use-comm-penalty=True
 
@@ -229,19 +229,19 @@ Cетап 2 (клиппинг без суммы KL-дивергенций):
 **Вывод:** чем чаще агенты обмениваются друг с другом информацией, тем лучше идёт обучение.
 
 
-#### Experiment 4
+### Experiment 4
 
 По сути, аналог второго эксперимента, но с фиксом отрицательного lr. Ожидаем, что сильной разницы между сетапами не будет (в отличие от третьего эксперимента).
 
-Сетап 1 (клиппинг без суммы KL-дивергенций, 576 локальных апдейтов):
+#### Сетап 1 (клиппинг без суммы KL-дивергенций, 576 локальных апдейтов):
 
     python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=576 --num-envs=4 --vf-coef=0.001 --exp-name=exp_4 --setup-id=setup_1 --use-clipping=True --use-comm-penalty=False
 
-Сетап 2 (клиппинг без суммы KL-дивергенций, 128 локальных апдейтов):
+#### Сетап 2 (клиппинг без суммы KL-дивергенций, 128 локальных апдейтов):
 
     python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=128 --num-envs=4 --vf-coef=0.001 --exp-name=exp_4 --setup-id=setup_2 --use-clipping=True --use-comm-penalty=False
 
-Сетап 3 (клиппинг без суммы KL-дивергенций, 16 локальных апдейтов):
+#### Сетап 3 (клиппинг без суммы KL-дивергенций, 16 локальных апдейтов):
 
     python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=16 --num-envs=4 --vf-coef=0.001 --exp-name=exp_4 --setup-id=setup_3 --use-clipping=True --use-comm-penalty=False
 
@@ -252,7 +252,7 @@ Cетап 2 (клиппинг без суммы KL-дивергенций):
 **Вывод:** наши ожидания подтвердились. В случае, если агенты не обмениваются информацией друг с другом (если нет суммы KL-дивергенций в лоссе), качество обучения не зависит от числа локальных обновлений.
 
 
-#### Experiment 5
+### Experiment 5 (fackup, см. следующий эксп.)
 
 По сути, MDPO - это PPO с KL Penalty без последних двух слагаемых в лоссе:
 
@@ -262,29 +262,57 @@ Cетап 2 (клиппинг без суммы KL-дивергенций):
 
 <img src="img/exp_5/L_clip_cases.png" width="40%">
 
-Сетап 1 (PPO с клиппингом, с суммой KL-дивергенций):
+#### Сетап 1 (PPO с клиппингом, с суммой KL-дивергенций):
 
     python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=576 --num-envs=4 --vf-coef=0.001 --exp-name=exp_5 --setup-id=setup_1 --use-clipping=True --use-mdpo=False --use-comm-penalty=True --comm-matrix-config="comm_matrices/4_agents.json"
 
-Сетап 2 (MDPO, с суммой KL-дивергенций):
+#### Сетап 2 (MDPO, с суммой KL-дивергенций):
 
     python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=128 --num-envs=4 --vf-coef=0.001 --exp-name=exp_5 --setup-id=setup_2 --use-clipping=False --use-mdpo=True --use-comm-penalty=True --comm-matrix-config="comm_matrices/4_agents.json"
 
-Сетап 3 (PPO с клиппингом, без суммы KL-дивергенций):
+#### Сетап 3 (PPO с клиппингом, без суммы KL-дивергенций):
 
     python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=576 --num-envs=4 --vf-coef=0.001 --exp-name=exp_5 --setup-id=setup_3 --use-clipping=True --use-mdpo=False --use-comm-penalty=False
 
-Сетап 4 (MDPO, без суммы KL-дивергенций):
+#### Сетап 4 (MDPO, без суммы KL-дивергенций):
 
     python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=128 --num-envs=4 --vf-coef=0.001 --exp-name=exp_5 --setup-id=setup_4 --use-clipping=False --use-mdpo=True --use-comm-penalty=False
 
-Сетап 5 (PPO с клиппингом, с суммой KL-дивергенций):
+#### Сетап 5 (PPO с клиппингом, с суммой KL-дивергенций):
 
     python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=576 --num-envs=4 --vf-coef=0.001 --exp-name=exp_5 --setup-id=setup_5 --use-clipping=True --use-mdpo=False --use-comm-penalty=True --comm-penalty-coeff=10.0 --comm-matrix-config="comm_matrices/4_agents.json"
 
-Сетап 6 (MDPO, с суммой KL-дивергенций):
+#### Сетап 6 (MDPO, с суммой KL-дивергенций):
 
     python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=128 --num-envs=4 --vf-coef=0.001 --exp-name=exp_5 --setup-id=setup_6 --use-clipping=False --use-mdpo=True --use-comm-penalty=True --comm-penalty-coeff=10.0 --comm-matrix-config="comm_matrices/4_agents.json"
+
+#### Experiment 6
+
+Всё-таки лосс в алгоритме MDPO содержит в себе Value function loss, поэтому эксперимент 5 некорректен. Перезапустим те же сетапы, но с исправленным лоссом для MDPO.
+
+Сетап 1 (PPO с клиппингом, с суммой KL-дивергенций):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=576 --num-envs=4 --vf-coef=0.001 --exp-name=exp_6 --setup-id=setup_1 --use-clipping=True --use-mdpo=False --use-comm-penalty=True --comm-matrix-config="comm_matrices/4_agents.json"
+
+Сетап 2 (MDPO, с суммой KL-дивергенций):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=128 --num-envs=4 --vf-coef=0.001 --exp-name=exp_6 --setup-id=setup_2 --use-clipping=False --use-mdpo=True --use-comm-penalty=True --comm-matrix-config="comm_matrices/4_agents.json"
+
+Сетап 3 (PPO с клиппингом, без суммы KL-дивергенций):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=576 --num-envs=4 --vf-coef=0.001 --exp-name=exp_6 --setup-id=setup_3 --use-clipping=True --use-mdpo=False --use-comm-penalty=False
+
+Сетап 4 (MDPO, без суммы KL-дивергенций):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=128 --num-envs=4 --vf-coef=0.001 --exp-name=exp_6 --setup-id=setup_4 --use-clipping=False --use-mdpo=True --use-comm-penalty=False
+
+Сетап 5 (PPO с клиппингом, с суммой KL-дивергенций):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=576 --num-envs=4 --vf-coef=0.001 --exp-name=exp_6 --setup-id=setup_5 --use-clipping=True --use-mdpo=False --use-comm-penalty=True --comm-penalty-coeff=10.0 --comm-matrix-config="comm_matrices/4_agents.json"
+
+Сетап 6 (MDPO, с суммой KL-дивергенций):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=128 --num-envs=4 --vf-coef=0.001 --exp-name=exp_6 --setup-id=setup_6 --use-clipping=False --use-mdpo=True --use-comm-penalty=True --comm-penalty-coeff=10.0 --comm-matrix-config="comm_matrices/4_agents.json"
 
 
 # Теория
