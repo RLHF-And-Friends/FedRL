@@ -3,6 +3,7 @@ import copy
 import time
 
 import gym
+import minigrid
 import numpy as np
 import torch
 import concurrent.futures
@@ -34,11 +35,12 @@ def generate_federated_system(device, args, run_name):
 
     for agent_idx in range(args.n_agents):
         envs = gym.vector.SyncVectorEnv(
-            [make_env(args.env_parameters_config, args.gym_id, args.seed + i, i, args.capture_video) for i in range(args.num_envs)]
+            [make_env(args, args.env_parameters_config, args.gym_id, args.seed + i, i, args.capture_video) for i in range(args.num_envs)]
         )
+        # print("generate_federated_system: Envs are created")
         assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
-        agent = Agent(envs, args).to(device)
+        agent = Agent(envs, args, is_grid=args.gym_id.startswith("MiniGrid")).to(device)
         optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)  
 
         federated_envs.append(FederatedEnvironment(device, args, run_name, envs, agent_idx, agent, optimizer))

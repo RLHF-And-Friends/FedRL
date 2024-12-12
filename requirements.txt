@@ -9,3 +9,4 @@ numpy==1.23.5
 moviepy==1.0.3
 cffi==1.17.1
 imageio==2.36.0
+minigrid==3.0.0

@@ -7,6 +7,8 @@ from distutils.util import strtobool
 import gym
 import torch.nn.functional as F
 from custom_envs.classic_control.cartpole import CustomCartPoleEnv
+from custom_envs.custom_minigrid.simple_env import SimpleEnv
+from minigrid.wrappers import RGBImgPartialObsWrapper, ImgObsWrapper
 
 
 
@@ -127,14 +129,29 @@ def compute_kl_divergence(p, q):
     return kl_div
 
 
-def make_env(env_parameters_config, gym_id, seed, idx, capture_video, run_name=None):
+def make_env(args, env_parameters_config, gym_id, seed, idx, capture_video, run_name=None):
     def thunk():
-        if env_parameters_config is not None:
-            env_parameters = extract_env_parameters(env_parameters_config, idx)
-            print("ENV: ", env_parameters)
-            env = CustomCartPoleEnv(render_mode="rgb_array", **env_parameters)
+        import minigrid
+
+        if args.use_custom_env:
+            if env_parameters_config is not None:
+                env_parameters = extract_env_parameters(env_parameters_config, idx)
+                env = CustomCartPoleEnv(render_mode="rgb_array", **env_parameters)
+            else:
+                env = SimpleEnv(render_mode="rgb_array", size=6)
+                obs1 = env.reset() # obs: {'image': numpy.ndarray (7, 7, 3),'direction': ,'mission': ,}
+                env = RGBImgPartialObsWrapper(env) # Get pixel observations
+                obs2 = env.reset() # obs: {'mission': ,'image': numpy.ndarray (56, 56, 3)}
+                env = ImgObsWrapper(env) # Get rid of the 'mission' field
+                obs3 = env.reset() # obs: numpy.ndarray (56, 56, 3)
         else:
             env = gym.make(gym_id, render_mode="rgb_array")
+            if gym_id.startswith("MiniGrid"):
+                env = ImgObsWrapper(env)
+
+        # print("utils: obs space before sample: ", env.observation_space)
+        # print("utils: obs space before sample shape: ", env.observation_space.shape)
+        # print("utils: obs space after sample: ", env.observation_space.sample())
 
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:

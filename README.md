@@ -314,6 +314,43 @@
 
     python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=128 --num-envs=4 --vf-coef=0.001 --exp-name=exp_6 --setup-id=setup_6 --use-clipping=False --use-mdpo=True --use-comm-penalty=True --comm-penalty-coeff=10.0 --comm-matrix-config="comm_matrices/4_agents.json"
 
+### Experiment 7
+
+Эксперимент 6, но в среде Acrobot-v1.
+
+#### Сетап 1 (PPO с клиппингом, с суммой KL-дивергенций):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=576 --num-envs=4 --vf-coef=0.001 --exp-name=exp_7 --setup-id=setup_1 --use-clipping=True --use-mdpo=False --use-comm-penalty=True --comm-matrix-config="comm_matrices/4_agents.json" --gym-id="Acrobot-v1"
+
+#### Сетап 2 (MDPO, с суммой KL-дивергенций):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=128 --num-envs=4 --vf-coef=0.001 --exp-name=exp_7 --setup-id=setup_2 --use-clipping=False --use-mdpo=True --use-comm-penalty=True --comm-matrix-config="comm_matrices/4_agents.json" --gym-id="Acrobot-v1"
+
+#### Сетап 3 (PPO с клиппингом, без суммы KL-дивергенций):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=576 --num-envs=4 --vf-coef=0.001 --exp-name=exp_7 --setup-id=setup_3 --use-clipping=True --use-mdpo=False --use-comm-penalty=False --gym-id="Acrobot-v1"
+
+#### Сетап 4 (MDPO, без суммы KL-дивергенций):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=128 --num-envs=4 --vf-coef=0.001 --exp-name=exp_7 --setup-id=setup_4 --use-clipping=False --use-mdpo=True --use-comm-penalty=False --gym-id="Acrobot-v1"
+
+#### Сетап 5 (PPO с клиппингом, с суммой KL-дивергенций):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=576 --num-envs=4 --vf-coef=0.001 --exp-name=exp_7 --setup-id=setup_5 --use-clipping=True --use-mdpo=False --use-comm-penalty=True --comm-penalty-coeff=10.0 --comm-matrix-config="comm_matrices/4_agents.json" --gym-id="Acrobot-v1"
+
+#### Сетап 6 (MDPO, с суммой KL-дивергенций):
+
+    python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=128 --num-envs=4 --vf-coef=0.001 --exp-name=exp_7 --setup-id=setup_6 --use-clipping=False --use-mdpo=True --use-comm-penalty=True --comm-penalty-coeff=10.0 --comm-matrix-config="comm_matrices/4_agents.json" --gym-id="Acrobot-v1"
+
+## Среды Minigrid
+
+Туторил по созданию кастомной среды: [ссылка](https://minigrid.farama.org/content/create_env_tutorial/)
+
+Запуск первого обучения:
+
+```
+python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=16 --num-envs=4 --vf-coef=0.001 --use-clipping=True --use-comm-penalty=False --gym-id="MiniGrid-Empty-16x16-v0" --capture-video
+```
 
 # Теория
 
