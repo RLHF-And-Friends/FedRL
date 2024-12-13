@@ -1,0 +1,38 @@
+{
+    "setup_1": {
+        "total-timesteps": 1000000,
+        "n-agents": 4,
+        "local-updates": 576,
+        "num-envs": 4,
+        "comm-matrix-config": "comm_matrices/4_agents.json",
+        "vf-coef": 0.001,
+        "exp-name": "exp_3",
+        "setup-id": "setup_1",
+        "use-clipping": true,
+        "use-comm-penalty": true
+    },
+    "setup_2": {
+        "total-timesteps": 1000000,
+        "n-agents": 4,
+        "local-updates": 128,
+        "num-envs": 4,
+        "comm-matrix-config": "comm_matrices/4_agents.json",
+        "vf-coef": 0.001,
+        "exp-name": "exp_3",
+        "setup-id": "setup_2",
+        "use-clipping": true,
+        "use-comm-penalty": true
+    },
+    "setup_3": {
+        "total-timesteps": 1000000,
+        "n-agents": 4,
+        "local-updates": 16,
+        "num-envs": 4,
+        "comm-matrix-config": "comm_matrices/4_agents.json",
+        "vf-coef": 0.001,
+        "exp-name": "exp_3",
+        "setup-id": "setup_3",
+        "use-clipping": true,
+        "use-comm-penalty": true
+    }
+}

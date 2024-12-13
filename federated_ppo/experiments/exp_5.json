@@ -1,0 +1,80 @@
+{
+    "setup_1": {
+        "total-timesteps": 1000000,
+        "n-agents": 4,
+        "local-updates": 576,
+        "num-envs": 4,
+        "vf-coef": 0.001,
+        "exp-name": "exp_5",
+        "setup-id": "setup_1",
+        "use-clipping": true,
+        "use-mdpo": false,
+        "use-comm-penalty": true,
+        "comm-matrix-config": "comm_matrices/4_agents.json"
+    },
+    "setup_2": {
+        "total-timesteps": 1000000,
+        "n-agents": 4,
+        "local-updates": 128,
+        "num-envs": 4,
+        "vf-coef": 0.001,
+        "exp-name": "exp_5",
+        "setup-id": "setup_2",
+        "use-clipping": false,
+        "use-mdpo": true,
+        "use-comm-penalty": true,
+        "comm-matrix-config": "comm_matrices/4_agents.json"
+    },
+    "setup_3": {
+        "total-timesteps": 1000000,
+        "n-agents": 4,
+        "local-updates": 576,
+        "num-envs": 4,
+        "vf-coef": 0.001,
+        "exp-name": "exp_5",
+        "setup-id": "setup_3",
+        "use-clipping": true,
+        "use-mdpo": false,
+        "use-comm-penalty": false
+    },
+    "setup_4": {
+        "total-timesteps": 1000000,
+        "n-agents": 4,
+        "local-updates": 128,
+        "num-envs": 4,
+        "vf-coef": 0.001,
+        "exp-name": "exp_5",
+        "setup-id": "setup_4",
+        "use-clipping": false,
+        "use-mdpo": true,
+        "use-comm-penalty": false
+    },
+    "setup_5": {
+        "total-timesteps": 1000000,
+        "n-agents": 4,
+        "local-updates": 576,
+        "num-envs": 4,
+        "vf-coef": 0.001,
+        "exp-name": "exp_5",
+        "setup-id": "setup_5",
+        "use-clipping": true,
+        "use-mdpo": false,
+        "use-comm-penalty": true,
+        "comm-penalty-coeff": 10.0,
+        "comm-matrix-config": "comm_matrices/4_agents.json"
+    },
+    "setup_6": {
+        "total-timesteps": 1000000,
+        "n-agents": 4,
+        "local-updates": 128,
+        "num-envs": 4,
+        "vf-coef": 0.001,
+        "exp-name": "exp_5",
+        "setup-id": "setup_6",
+        "use-clipping": false,
+        "use-mdpo": true,
+        "use-comm-penalty": true,
+        "comm-penalty-coeff": 10.0,
+        "comm-matrix-config": "comm_matrices/4_agents.json"
+    }
+}

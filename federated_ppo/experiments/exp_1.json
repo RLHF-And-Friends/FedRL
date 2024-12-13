@@ -1,0 +1,50 @@
+{
+    "experiment_1": {
+        "setup_1": {
+            "total-timesteps": 1000000,
+            "n-agents": 4,
+            "local-updates": 16,
+            "num-envs": 4,
+            "comm-matrix-config": "comm_matrices/4_agents.json",
+            "vf-coef": 0.001,
+            "exp-name": "exp_1",
+            "setup-id": "setup_1",
+            "use-clipping": true,
+            "use-comm-penalty": true
+        },
+        "setup_2": {
+            "total-timesteps": 1000000,
+            "n-agents": 4,
+            "local-updates": 16,
+            "num-envs": 4,
+            "vf-coef": 0.001,
+            "exp-name": "exp_1",
+            "setup-id": "setup_2",
+            "use-clipping": true,
+            "use-comm-penalty": false
+        },
+        "setup_3": {
+            "total-timesteps": 1000000,
+            "n-agents": 4,
+            "local-updates": 16,
+            "num-envs": 4,
+            "comm-matrix-config": "comm_matrices/4_agents.json",
+            "vf-coef": 0.001,
+            "exp-name": "exp_1",
+            "setup-id": "setup_3",
+            "use-clipping": false,
+            "use-comm-penalty": true
+        },
+        "setup_4": {
+            "total-timesteps": 1000000,
+            "n-agents": 4,
+            "local-updates": 16,
+            "num-envs": 4,
+            "vf-coef": 0.001,
+            "exp-name": "exp_1",
+            "setup-id": "setup_4",
+            "use-clipping": false,
+            "use-comm-penalty": false
+        }
+    }
+}

@@ -1,0 +1,35 @@
+{
+    "setup_1": {
+        "total-timesteps": 1000000,
+        "n-agents": 4,
+        "local-updates": 1024,
+        "num-envs": 4,
+        "vf-coef": 0.001,
+        "exp-name": "exp_2",
+        "setup-id": "setup_1",
+        "use-clipping": true,
+        "use-comm-penalty": false
+    },
+    "setup_2": {
+        "total-timesteps": 1000000,
+        "n-agents": 4,
+        "local-updates": 256,
+        "num-envs": 4,
+        "vf-coef": 0.001,
+        "exp-name": "exp_2",
+        "setup-id": "setup_2",
+        "use-clipping": true,
+        "use-comm-penalty": false
+    },
+    "setup_3": {
+        "total-timesteps": 1000000,
+        "n-agents": 4,
+        "local-updates": 16,
+        "num-envs": 4,
+        "vf-coef": 0.001,
+        "exp-name": "exp_2",
+        "setup-id": "setup_3",
+        "use-clipping": true,
+        "use-comm-penalty": false
+    }
+}
