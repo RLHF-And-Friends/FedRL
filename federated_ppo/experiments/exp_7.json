@@ -1,0 +1,62 @@
+{
+    "setup_1": {
+        "total-timesteps": 1000000,
+        "anneal-lr": true,
+        "n-agents": 1,
+        "num-envs": 4,
+        "vf-coef": 0.001,
+        "exp-name": "exp_7",
+        "setup-id": "setup_1",
+        "use-clipping": false,
+        "use-mdpo": false,
+        "use-comm-penalty": false,
+        "gym-id": "MiniGrid-LavaCrossingS9N1-v0",
+        "capture-video": true,
+        "learning-rate": 2.5e-4
+    },
+    "setup_2": {
+        "total-timesteps": 1000000,
+        "anneal-lr": false,
+        "n-agents": 1,
+        "num-envs": 4,
+        "vf-coef": 0.001,
+        "exp-name": "exp_7",
+        "setup-id": "setup_2",
+        "use-clipping": true,
+        "use-mdpo": false,
+        "use-comm-penalty": false,
+        "gym-id": "MiniGrid-LavaCrossingS9N1-v0",
+        "capture-video": true,
+        "learning-rate": 2.5e-3
+    },
+    "setup_3": {
+        "total-timesteps": 1000000,
+        "anneal-lr": true,
+        "n-agents": 1,
+        "num-envs": 4,
+        "vf-coef": 0.001,
+        "exp-name": "exp_7",
+        "setup-id": "setup_3",
+        "use-clipping": false,
+        "use-mdpo": false,
+        "use-comm-penalty": false,
+        "gym-id": "MiniGrid-LavaCrossingS9N1-v0",
+        "capture-video": true,
+        "learning-rate": 2.5e-2
+    },
+    "setup_4": {
+        "total-timesteps": 1000000,
+        "anneal-lr": true,
+        "n-agents": 1,
+        "num-envs": 4,
+        "vf-coef": 0.001,
+        "exp-name": "exp_7",
+        "setup-id": "setup_4",
+        "use-clipping": false,
+        "use-mdpo": false,
+        "use-comm-penalty": false,
+        "gym-id": "MiniGrid-LavaCrossingS9N1-v0",
+        "capture-video": true,
+        "learning-rate": 2.5e-1
+    }
+}

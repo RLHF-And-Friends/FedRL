@@ -6,6 +6,7 @@ import os
 
 def run_experiments(config_path):
     print(f"Run experiment with config {os.path.basename(config_path)}")
+    exp_name = os.path.basename(config_path).split(".")[0]
 
     with open(config_path, 'r') as f:
         configs = json.load(f)
@@ -26,9 +27,9 @@ def run_experiments(config_path):
             command.append(f"--comm-penalty-coeff={setup_config['comm_penalty_coeff']}")
 
         log_dir = "logs"
-        os.makedirs(log_dir, exist_ok=True)  # Create logs directory if it doesn't exist
-        stdout_log = open(f"{log_dir}/{setup_name}_stdout.log", "w")
-        stderr_log = open(f"{log_dir}/{setup_name}_stderr.log", "w")
+        os.makedirs(log_dir + "/" + exp_name, exist_ok=True)  # Create logs directory if it doesn't exist
+        stdout_log = open(f"{log_dir}/{exp_name}/{setup_name}_stdout.log", "w")
+        stderr_log = open(f"{log_dir}/{exp_name}/{setup_name}_stderr.log", "w")
 
         print(f"Running setup: {setup_name}")
         print("Command:", " ".join(command))

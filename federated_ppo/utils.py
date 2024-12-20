@@ -44,7 +44,6 @@ def parse_args():
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="weather to capture videos of the agent performances (check out `videos` folder)")
 
-
     # Algorithm specific arguments
     parser.add_argument("--n-agents", type=int, default=2,
         help="number of agents")
@@ -155,8 +154,7 @@ def make_env(args, env_parameters_config, gym_id, seed, idx, capture_video, run_
 
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
-            if idx == 0:
-                env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
+            env = gym.wrappers.RecordVideo(env, f"videos/agent_{idx}/{run_name}")
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env

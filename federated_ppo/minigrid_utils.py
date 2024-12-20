@@ -5,18 +5,24 @@ import torch
 import numpy as np
 
 
+def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
+    torch.nn.init.orthogonal_(layer.weight, std)
+    torch.nn.init.constant_(layer.bias, bias_const)
+    return layer
+
+
 class MinigridFeaturesExtractor(BaseFeaturesExtractor):
     def __init__(self, observation_space: gym.Space, features_dim: int = 512, normalized_image: bool = False) -> None:
         super().__init__(observation_space, features_dim)
         n_input_channels = observation_space.shape[2]
         # print("n_input_channels: ", n_input_channels)
         self.cnn = nn.Sequential(
-            nn.Conv2d(n_input_channels, 16, (2, 2)),
-            nn.ReLU(),
-            nn.Conv2d(16, 32, (2, 2)),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, (2, 2)),
-            nn.ReLU(),
+            layer_init(nn.Conv2d(n_input_channels, 16, (2, 2))),
+            nn.Tanh(),
+            layer_init(nn.Conv2d(16, 32, (2, 2))),
+            nn.Tanh(),
+            layer_init(nn.Conv2d(32, 64, (2, 2))),
+            nn.Tanh(),
             nn.Flatten(),
         )
 
@@ -24,7 +30,7 @@ class MinigridFeaturesExtractor(BaseFeaturesExtractor):
         with torch.no_grad():
             n_flatten = self.cnn(torch.as_tensor(np.transpose(observation_space.sample(), (2, 0, 1))[None]).float()).shape[1]
 
-        self.linear = nn.Sequential(nn.Linear(n_flatten, features_dim), nn.ReLU())
+        self.linear = nn.Sequential(layer_init(nn.Linear(n_flatten, features_dim)), nn.Tanh())
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
         return self.linear(self.cnn(torch.permute(observations, (0, 3, 1, 2))))
