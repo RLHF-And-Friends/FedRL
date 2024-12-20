@@ -278,13 +278,21 @@ python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-upd
 
 ### Experiment *
 
-Здесь я проверил различные сетапы по обучению агентов в лабиринтах, а точнее в средах MiniGrid-SimpleCrossing и MiniGrid-LavaCrossing. 5 сетапов:
+Здесь я проверил различные сетапы по обучению агентов в лабиринтах, а точнее в средах MiniGrid-SimpleCrossing и MiniGrid-LavaCrossing.
+
+Архитектура FeatureExtractor'а:
+
+<img src="img/exp_initial_minigrid/feature_extractor_architecture.png" width="40%">
+
+5 сетапов:
 
 - Сетап 1: SimpleCrossing с CNN с активацией Tanh
 - Сетап 2: SimpleCrossing только с полносвязным слоем с активацией Tanh
 - Сетап 3: LavaCrossing только с полносвязным слоем с активацией Tanh
 - Сетап 4: LavaCrossing с CNN с активацией Tanh
 - Сетап 5: LavaCrossing с CNN с активацией ReLU
+
+Другие параметры: num-envs=8
 
 <img src="img/exp_initial_minigrid/episodic_returns.png" width="40%">
 
@@ -316,23 +324,27 @@ python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-upd
 - Сетап 2: MiniGrid-LavaCrossingS9N2-v0
 - Сетап 3: MiniGrid-LavaCrossingS9N3-v0
 
+<img src="img/exp_8/image.png" width="40%">
 
 
 **Выводы:**
-- 
+- Агенты успешно обучаются в средах с 1 и 3 линиями из лавы, причём для последней среды требуется больше времени для обучения
+- В среде с двумя линиями из лавы агент за 5 миллионов шагов не обучился 
 
 
 ### Experiment 9
 
-Используем CNN с функцией активацией Tanh в среде MiniGrid-LavaCrossingS9N1-v0 с различным числом параллельных сред (--num-envs) для обучения агента.
+Используем CNN с функцией активацией Tanh в среде MiniGrid-LavaCrossingS9N2-v0 с различным числом параллельных сред (--num-envs) для обучения агента.
 
 - Сетап 1: num-envs=4
 - Сетап 2: num-envs=16
 - Сетап 3: num-envs=32
 
+<img src="img/exp_9/image.png" width="40%">
+
 
 **Выводы:**
-- 
+- Из рассмотренных сетапов обучение проходит успешно только во втором, когда мы кладём в батч эпизоды из 16 параллельных сред
 
 # Теория
 

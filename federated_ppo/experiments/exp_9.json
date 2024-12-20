@@ -10,7 +10,7 @@
         "use-clipping": false,
         "use-mdpo": false,
         "use-comm-penalty": false,
-        "gym-id": "MiniGrid-LavaCrossingS9N1-v0",
+        "gym-id": "MiniGrid-LavaCrossingS9N2-v0",
         "capture-video": true,
         "learning-rate": 2.5e-4
     },
@@ -25,7 +25,7 @@
         "use-clipping": false,
         "use-mdpo": false,
         "use-comm-penalty": false,
-        "gym-id": "MiniGrid-LavaCrossingS9N1-v0",
+        "gym-id": "MiniGrid-LavaCrossingS9N2-v0",
         "capture-video": true,
         "learning-rate": 2.5e-4
     },
@@ -40,7 +40,7 @@
         "use-clipping": false,
         "use-mdpo": false,
         "use-comm-penalty": false,
-        "gym-id": "MiniGrid-LavaCrossingS9N1-v0",
+        "gym-id": "MiniGrid-LavaCrossingS9N2-v0",
         "capture-video": true,
         "learning-rate": 2.5e-4
     }
