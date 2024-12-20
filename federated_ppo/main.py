@@ -62,8 +62,13 @@ def local_update(federated_env, global_step) -> None:
 
 if __name__ == "__main__":
     args = parse_args()
-    # run_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
-    run_name = f"{args.gym_id}__{args.exp_name}__{args.setup_id}_{int(time.time())}"
+    run_name = args.gym_id
+    if args.exp_name != "":
+        run_name += f"__{args.exp_name}"
+        if args.setup_id != "":
+            run_name += f"__{args.setup_id}"
+    run_name += f"__{int(time.time())}"
+
     # if args.track:
     #     import wandb
 

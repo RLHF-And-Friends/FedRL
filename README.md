@@ -276,6 +276,64 @@ python3 federated_ppo/run_experiments.py --config federated_ppo/experiments/exp_
 python3 -m federated_ppo.main --total-timesteps=1000000 --n-agents=4 --local-updates=16 --num-envs=4 --vf-coef=0.001 --use-clipping=True --use-comm-penalty=False --gym-id="MiniGrid-Empty-16x16-v0" --capture-video
 ```
 
+### Experiment *
+
+Здесь я проверил различные сетапы по обучению агентов в лабиринтах, а точнее в средах MiniGrid-SimpleCrossing и MiniGrid-LavaCrossing. 5 сетапов:
+
+- Сетап 1: SimpleCrossing с CNN с активацией Tanh
+- Сетап 2: SimpleCrossing только с полносвязным слоем с активацией Tanh
+- Сетап 3: LavaCrossing только с полносвязным слоем с активацией Tanh
+- Сетап 4: LavaCrossing с CNN с активацией Tanh
+- Сетап 5: LavaCrossing с CNN с активацией ReLU
+
+<img src="img/exp_initial_minigrid/episodic_returns.png" width="40%">
+
+**Выводы:**
+- Свёрточная сеть с активацией Tanh обучается быстрее, чем с активацией ReLU
+- Для обучения агентов в среде LavaCrossing необходимо использование свёрток, т.к. с исключительно полносвязным слоем модель показывает результаты на порядок хуже (можно сказать, не обучается)
+- В среде SimpleCrossing агенты обучаются медленнее с использованием свёрток, чем просто с линейным слоем. Однако, в последних эпизодах обучения свёртки показывают более стабильный результат, в то время как модель с исключительно FCN более шумная
+- Все сетапы, кроме 3, в итоге приближаются к значению 0.95 по episodic return
+
+### Experiment 7
+
+Используем CNN с функцией активацией Tanh в различных средах SimpleCrossing:
+
+- Сетап 1: MiniGrid-SimpleCrossingS9N1-v0
+- Сетап 2: MiniGrid-SimpleCrossingS9N2-v0
+- Сетап 3: MiniGrid-SimpleCrossingS9N3-v0
+
+<img src="img/exp_7/episodic_returns.png" width="40%">
+
+**Выводы:**
+- Чем больше стенок в лабиринте, тем быстрее обучается агент
+- Итоговое значение награды за эпизод так же около 0.95
+
+### Experiment 8
+
+Используем CNN с функцией активацией Tanh в различных средах LavaCrossing:
+
+- Сетап 1: MiniGrid-LavaCrossingS9N1-v0
+- Сетап 2: MiniGrid-LavaCrossingS9N2-v0
+- Сетап 3: MiniGrid-LavaCrossingS9N3-v0
+
+
+
+**Выводы:**
+- 
+
+
+### Experiment 9
+
+Используем CNN с функцией активацией Tanh в среде MiniGrid-LavaCrossingS9N1-v0 с различным числом параллельных сред (--num-envs) для обучения агента.
+
+- Сетап 1: num-envs=4
+- Сетап 2: num-envs=16
+- Сетап 3: num-envs=32
+
+
+**Выводы:**
+- 
+
 # Теория
 
 ## Градиент функции лосса для MDPO

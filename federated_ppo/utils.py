@@ -15,9 +15,9 @@ from minigrid.wrappers import RGBImgPartialObsWrapper, ImgObsWrapper
 def parse_args():
     # fmt: off
     parser = argparse.ArgumentParser()
-    parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
+    parser.add_argument("--exp-name", type=str, default="",
         help="the name of this experiment")
-    parser.add_argument("--setup-id", type=str, default=os.path.basename(__file__).rstrip(".py"),
+    parser.add_argument("--setup-id", type=str, default="",
         help="the id of the setup")
     parser.add_argument("--exp-description", type=str, default="Empty description",
         help="Experiment description")
@@ -154,7 +154,8 @@ def make_env(args, env_parameters_config, gym_id, seed, idx, capture_video, run_
 
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
-            env = gym.wrappers.RecordVideo(env, f"videos/agent_{idx}/{run_name}")
+            if idx == 0:
+                env = gym.wrappers.RecordVideo(env, f"videos/env_{idx}/{run_name}")
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
