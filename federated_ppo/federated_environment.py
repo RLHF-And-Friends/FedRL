@@ -51,8 +51,8 @@ class FederatedEnvironment():
         args = self.args
         # TRY NOT TO MODIFY: start the game
         for update in range(1, args.local_updates + 1):
-            if self.args.gym_id.startswith("MiniGrid") and self.agent_idx == 1:
-                print(self.envs.envs[0].pprint_grid())
+            # if self.args.gym_id.startswith("MiniGrid") and self.agent_idx == 1:
+            #     print(self.envs.envs[0].pprint_grid())
             # Annealing the rate if instructed to do so.
             num_updates = global_step * args.local_updates + update
             if args.anneal_lr:

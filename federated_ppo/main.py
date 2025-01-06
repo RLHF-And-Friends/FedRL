@@ -20,6 +20,29 @@ from .utils import (
 )
 
 
+def average_weights(federated_envs) -> None:
+    agents = []
+    for env in federated_envs:
+        agents.append(copy.deepcopy(env.agent))
+
+    state_dict_keys = agents[0].state_dict().keys()
+    # print("State dict keys: ", state_dict_keys)
+
+    for i, env in enumerate(federated_envs):
+        agent = env.agent
+        averaged_weights = {key: torch.zeros_like(param) for key, param in agents[0].state_dict().items()}
+        for key in state_dict_keys:
+            denom = 0
+            for j, neighbor_agent in enumerate(agents):
+                neighbor_agent_weights = neighbor_agent.state_dict()
+                averaged_weights[key] += env.comm_matrix[i, j] * neighbor_agent_weights[key]
+                denom += env.comm_matrix[i, j]
+            averaged_weights[key] /= denom
+
+        agent.load_state_dict(averaged_weights)
+    
+        print("agent: ", i, ", averaged weights: ", averaged_weights)
+
 def exchange_weights(federated_envs) -> None:
     agents = []
     for env in federated_envs:
@@ -45,7 +68,7 @@ def generate_federated_system(device, args, run_name):
 
         federated_envs.append(FederatedEnvironment(device, args, run_name, envs, agent_idx, agent, optimizer))
 
-    if args.use_comm_penalty:
+    if args.use_comm_penalty or args.average_weights:
         comm_matrix = create_comm_matrix(n_agents=args.n_agents, comm_matrix_config=args.comm_matrix_config)
 
         for env in federated_envs:
@@ -67,6 +90,8 @@ if __name__ == "__main__":
         run_name += f"__{args.exp_name}"
         if args.setup_id != "":
             run_name += f"__{args.setup_id}"
+        if args.seed != "":
+            run_name += f"__seed_{args.seed}"
     run_name += f"__{int(time.time())}"
 
     # if args.track:
@@ -101,6 +126,9 @@ if __name__ == "__main__":
 
             for future in futures:
                 future.result()
+
+            if args.average_weights:
+                average_weights(federated_envs)
 
             exchange_weights(federated_envs)
 

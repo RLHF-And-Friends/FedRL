@@ -74,7 +74,9 @@ def parse_args():
     parser.add_argument("--use-clipping", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Use clipping or KL penalty (adaptive loss)")
     parser.add_argument("--use-comm-penalty", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="Penalize for kl divergence with neighbors or not") 
+        help="Penalize for kl divergence with neighbors or not")
+    parser.add_argument("--average-weights", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+        help="Average agents weights or not") 
     parser.add_argument("--comm-penalty-coeff",  type=float, default=1.0,
         help="coefficient of the communication penalty") 
     parser.add_argument("--penalty-coeff", type=float, default=1.0,
