@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import json
 from distutils.util import strtobool
+# import gymnasium as gym
 import gym
 import torch.nn.functional as F
 from custom_envs.classic_control.cartpole import CustomCartPoleEnv
@@ -37,7 +38,7 @@ def parse_args():
         help="if toggled, cuda will be enabled by default")
     parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="if toggled, this experiment will be tracked with Weights and Biases")
-    parser.add_argument("--wandb-project-name", type=str, default="ppo-implementation-details",
+    parser.add_argument("--wandb-project-name", type=str, default="RLHF",
         help="the wandb's project name")
     parser.add_argument("--wandb-entity", type=str, default=None,
         help="the entity (team) of wandb's project")
@@ -68,7 +69,7 @@ def parse_args():
     parser.add_argument("--gae-lambda", type=float, default=0.95,
         help="the lambda for the general advantage estimation")
     parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="T oggles advantages normalization")
+        help="Toggles advantages normalization")
     parser.add_argument("--use-mdpo", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=False,
         help="Use MDPO instead of PPO")
     parser.add_argument("--use-clipping", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,

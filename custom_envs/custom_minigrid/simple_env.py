@@ -1,6 +1,6 @@
 from minigrid.minigrid_env import MiniGridEnv
 from minigrid.core.mission import MissionSpace
-from gymnasium.spaces import Box
+from gym.spaces import Box
 import numpy as np
 from minigrid.core.grid import Grid
 from minigrid.core.world_object import Door, Goal, Key, Wall

@@ -2,6 +2,7 @@ import random
 import copy
 import time
 
+# import gymnasium as gym
 import gym
 import minigrid
 import numpy as np
@@ -94,18 +95,18 @@ if __name__ == "__main__":
             run_name += f"__seed_{args.seed}"
     run_name += f"__{int(time.time())}"
 
-    # if args.track:
-    #     import wandb
+    if args.track:
+        import wandb
 
-    #     wandb.init(
-    #         project=args.wandb_project_name,
-    #         entity=args.wandb_entity,
-    #         sync_tensorboard=True,
-    #         config=vars(args),
-    #         name=run_name,
-    #         monitor_gym=True,
-    #         save_code=True,
-    #     )
+        wandb.init(
+            project=args.wandb_project_name,
+            entity=args.wandb_entity,
+            sync_tensorboard=True,
+            config=vars(args),
+            name=run_name,
+            monitor_gym=True,
+            save_code=True,
+        )
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -114,6 +115,7 @@ if __name__ == "__main__":
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+    print("device: ", device)
 
     federated_envs = generate_federated_system(device, args, run_name)
 
@@ -130,7 +132,8 @@ if __name__ == "__main__":
             if args.average_weights:
                 average_weights(federated_envs)
 
-            exchange_weights(federated_envs)
+            if args.average_weights or args.use_comm_penalty:
+                exchange_weights(federated_envs)
 
     for env in federated_envs:
         env.close()
