@@ -56,7 +56,8 @@ class FederatedEnvironment():
             # Annealing the rate if instructed to do so.
             num_updates = global_step * args.local_updates + update
             if args.anneal_lr:
-                frac = 1.0 - (num_updates - 1.0) / (args.local_updates * args.global_updates)
+                frac = 1.0 - (num_updates - 1.0) / int(args.total_timesteps // args.batch_size)
+                # note: denominator is not equal to (args.local_updates * args.global_updates)
                 assert frac > 0, "fraction for learning rate annealing must be positive"
                 lrnow = frac * args.learning_rate
                 self.optimizer.param_groups[0]["lr"] = lrnow
