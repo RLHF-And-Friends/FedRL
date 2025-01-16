@@ -56,7 +56,7 @@ for combo in combinations:
             f"--track={str(combo['track']).lower()} "
         )
         commands.append(cmd)
-        setup_id += 1
+    setup_id += 1
 
 # Сохранение в файл
 with open("commands.txt", "w") as f:
