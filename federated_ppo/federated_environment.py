@@ -193,58 +193,66 @@ class FederatedEnvironment():
                     
                     if args.use_mdpo:
                         loss = pg_loss + v_loss * args.vf_coef
+                        abs_loss = abs(pg_loss) + abs(v_loss * args.vf_coef) # for logging
                     else:
                         loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
+                        abs_loss = abs(pg_loss) + abs(args.ent_coef * entropy_loss) + abs(v_loss * args.vf_coef) # for logging
 
                     if args.use_comm_penalty:
-                        kl_penalty = 0
-                        if args.sum_kl_divergencies:
-                            for neighbor_agent_idx in range(args.n_agents):
-                                if neighbor_agent_idx != self.agent_idx:
-                                    comm_coeff = self.comm_matrix[self.agent_idx][neighbor_agent_idx]
-                                    current_agent = self.neighbors[self.agent_idx]
-                                    # print("b_obs[mb_inds] shape: ", b_obs[mb_inds].shape)
-                                    # print("b_actions.long()[mb_inds] shape: ", b_actions.long()[mb_inds].shape)
-                                    _, current_b_logprobs, _, _ = self.agent.get_action_and_value(
-                                        b_obs[mb_inds], b_actions.long()[mb_inds]
-                                    )
+                        # log two options
+                        sum_kl_penalty = 0
+                        kl_div_weighted = None
+
+                        _, current_b_logprobs, _, _ = self.agent.get_action_and_value(
+                            b_obs[mb_inds], b_actions.long()[mb_inds]
+                        )
+
+                        sum_comm_weight = 0
+                        weighted_neighbor_b_logprobs = torch.zeros_like(current_b_logprobs)
+
+                        for neighbor_agent_idx in range(args.n_agents):
+                            if neighbor_agent_idx != self.agent_idx:
+                                comm_coeff = self.comm_matrix[self.agent_idx][neighbor_agent_idx]
+                                if comm_coeff != 0:
+                                    sum_comm_weight += comm_coeff
+
                                     neighbor_agent = self.neighbors[neighbor_agent_idx]
                                     _, neighbor_b_logprobs, _, _ = neighbor_agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
 
-                                    kl_div = compute_kl_divergence(current_b_logprobs, neighbor_b_logprobs)
-                                    kl_penalty += comm_coeff * kl_div
-                                    self.writer.add_scalar(f"charts/kl_{self.agent_idx}_{neighbor_agent_idx}", kl_div, self.num_steps)
-                        else:
-                            weighted_neighbor_b_logprobs = torch.zeros_like(current_b_logprobs)
-                            sum_comm_weight = 0
+                                    kl_div_with_neighbor = compute_kl_divergence(current_b_logprobs, neighbor_b_logprobs)
+                                    self.writer.add_scalar(f"charts/kl_{self.agent_idx}_{neighbor_agent_idx}", kl_div_with_neighbor, self.num_steps)
 
-                            for neighbor_agent_idx in range(args.n_agents):
-                                if neighbor_agent_idx != self.agent_idx:
-                                    comm_coeff = self.comm_matrix[self.agent_idx][neighbor_agent_idx]
-                                    neighbor_agent = self.neighbors[neighbor_agent_idx]
-
-                                    _, neighbor_b_logprobs, _, _ = neighbor_agent.get_action_and_value(
-                                        b_obs[mb_inds], b_actions.long()[mb_inds]
-                                    )
-
+                                    sum_kl_penalty += comm_coeff * kl_div_with_neighbor
                                     weighted_neighbor_b_logprobs += comm_coeff * neighbor_b_logprobs
-                                    sum_comm_weight += comm_coeff
-                            
-                            if sum_comm_weight > 0:
-                                weighted_neighbor_b_logprobs /= sum_comm_weight
 
-                            kl_div = compute_kl_divergence(current_b_logprobs, weighted_neighbor_b_logprobs)
-                            kl_penalty = kl_div
+                        if sum_comm_weight > 0:
+                            sum_kl_penalty /= sum_comm_weight
+                            weighted_neighbor_b_logprobs /= sum_comm_weight
+
+                            kl_div_weighted = compute_kl_divergence(current_b_logprobs, weighted_neighbor_b_logprobs)
+                            
+                            self.writer.add_scalar(f"charts/sum_kl_{self.agent_idx}", sum_kl_penalty, self.num_steps)
+                            self.writer.add_scalar(f"charts/weighted_kl_{self.agent_idx}", kl_div_weighted, self.num_steps)
+
+                            if args.sum_kl_divergencies:
+                                kl_penalty = sum_kl_penalty
+                            else:
+                                kl_penalty = kl_div_weighted
+                        else:
+                            # no communication with neighbors
+                            kl_penalty = 0
+                            pass
 
                         loss += args.comm_penalty_coeff * kl_penalty
+                        abs_loss += abs(args.comm_penalty_coeff * kl_penalty) # for logging
 
-                    self.writer.add_scalar(f"charts/loss_fractions/pg_loss", abs(pg_loss / loss), self.num_steps)
+                    self.writer.add_scalar(f"charts/loss_fractions/pg_loss", abs(pg_loss / abs_loss), self.num_steps)
                     if args.use_comm_penalty:
-                        self.writer.add_scalar(f"charts/loss_fractions/kl_penalty_loss", abs(kl_penalty / loss), self.num_steps)
+                        self.writer.add_scalar(f"charts/loss_fractions/kl_penalty_loss", abs(args.comm_penalty_coeff * kl_penalty / abs_loss), self.num_steps)
                                         
                     if not args.use_mdpo:
-                        self.writer.add_scalar(f"charts/loss_fractions/entropy_loss", abs(entropy_loss * args.ent_coef / loss), self.num_steps)
-                        self.writer.add_scalar(f"charts/loss_fractions/value_loss", abs(v_loss * args.vf_coef / loss), self.num_steps)
+                        self.writer.add_scalar(f"charts/loss_fractions/entropy_loss", abs(entropy_loss * args.ent_coef / abs_loss), self.num_steps)
+                        self.writer.add_scalar(f"charts/loss_fractions/value_loss", abs(v_loss * args.vf_coef / abs_loss), self.num_steps)
 
 
                     self.optimizer.zero_grad()
