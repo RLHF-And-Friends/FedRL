@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from custom_envs.classic_control.cartpole import CustomCartPoleEnv
 from custom_envs.custom_minigrid.simple_env import SimpleEnv, CustomCrossingEnv
 from minigrid.wrappers import RGBImgPartialObsWrapper, ImgObsWrapper
-
+from minigrid.core.world_object import Wall
 
 
 def parse_args():
@@ -141,10 +141,12 @@ def make_env(args, env_parameters_config, gym_id, seed, idx, capture_video, run_
         import minigrid
 
         if args.use_custom_env:
-            if gym_id.startswith("MiniGrid"):
+            if gym_id.startswith("MiniGrid-CustomLavaCrossingS9N2"):
                 # Analogue of MiniGrid-LavaCrossingS9N2-v0
                 # See /home/smirnov/miniconda3/envs/fedrl/lib/python3.11/site-packages/minigrid/__init__.py
                 env = ImgObsWrapper(CustomCrossingEnv(agent_id=idx+1, size=9, num_crossings=2,vertical_obstacles=(idx in [0, 1, 2])))
+            elif gym_id.startswith("MiniGrid-CustomSimpleCrossingS9N2"):
+                env = ImgObsWrapper(CustomCrossingEnv(obstacle_type=Wall, agent_id=idx+1, size=9, num_crossings=2,vertical_obstacles=(idx in [0, 1, 2])))
             else:
                 if env_parameters_config is not None:
                     env_parameters = extract_env_parameters(env_parameters_config, idx)

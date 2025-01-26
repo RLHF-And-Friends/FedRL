@@ -4,10 +4,9 @@ from minigrid.core.mission import MissionSpace
 from gym.spaces import Box
 import numpy as np
 from minigrid.core.grid import Grid
-from minigrid.core.world_object import Door, Goal, Key, Wall
+from minigrid.core.world_object import Door, Goal, Key, Wall, Lava
 from minigrid.core.constants import COLOR_NAMES
 import itertools as itt
-from minigrid.core.world_object import Lava
 
 
 class SimpleEnv(MiniGridEnv):
