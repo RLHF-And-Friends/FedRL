@@ -8,7 +8,7 @@ from distutils.util import strtobool
 import gym
 import torch.nn.functional as F
 from custom_envs.classic_control.cartpole import CustomCartPoleEnv
-from custom_envs.custom_minigrid.simple_env import SimpleEnv, CustomCrossingEnv
+from custom_envs.minigrid.custom_minigrid_env import CustomCrossingEnv
 from minigrid.wrappers import RGBImgPartialObsWrapper, ImgObsWrapper
 from minigrid.core.world_object import Wall
 
@@ -147,17 +147,17 @@ def make_env(args, env_parameters_config, gym_id, seed, idx, capture_video, run_
                 env = ImgObsWrapper(CustomCrossingEnv(agent_id=idx+1, size=9, num_crossings=2,vertical_obstacles=(idx in [0, 1, 2])))
             elif gym_id.startswith("MiniGrid-CustomSimpleCrossingS9N2"):
                 env = ImgObsWrapper(CustomCrossingEnv(obstacle_type=Wall, agent_id=idx+1, size=9, num_crossings=2,vertical_obstacles=(idx in [0, 1, 2])))
-            else:
-                if env_parameters_config is not None:
-                    env_parameters = extract_env_parameters(env_parameters_config, idx)
-                    env = CustomCartPoleEnv(render_mode="rgb_array", **env_parameters)
-                else:
-                    env = SimpleEnv(render_mode="rgb_array", size=6)
-                    obs1 = env.reset() # obs: {'image': numpy.ndarray (7, 7, 3),'direction': ,'mission': ,}
-                    env = RGBImgPartialObsWrapper(env) # Get pixel observations
-                    obs2 = env.reset() # obs: {'mission': ,'image': numpy.ndarray (56, 56, 3)}
-                    env = ImgObsWrapper(env) # Get rid of the 'mission' field
-                    obs3 = env.reset() # obs: numpy.ndarray (56, 56, 3)
+            # else:
+            #     if env_parameters_config is not None:
+            #         env_parameters = extract_env_parameters(env_parameters_config, idx)
+            #         env = CustomCartPoleEnv(render_mode="rgb_array", **env_parameters)
+            #     else:
+            #         env = SimpleEnv(render_mode="rgb_array", size=6)
+            #         obs1 = env.reset() # obs: {'image': numpy.ndarray (7, 7, 3),'direction': ,'mission': ,}
+            #         env = RGBImgPartialObsWrapper(env) # Get pixel observations
+            #         obs2 = env.reset() # obs: {'mission': ,'image': numpy.ndarray (56, 56, 3)}
+            #         env = ImgObsWrapper(env) # Get rid of the 'mission' field
+            #         obs3 = env.reset() # obs: numpy.ndarray (56, 56, 3)
         else:
             env = gym.make(gym_id, render_mode="rgb_array")
             if gym_id.startswith("MiniGrid"):
