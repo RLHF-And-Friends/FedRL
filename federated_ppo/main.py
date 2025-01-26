@@ -47,7 +47,11 @@ def average_weights(federated_envs) -> None:
 def exchange_weights(federated_envs) -> None:
     agents = []
     for env in federated_envs:
-        agents.append(copy.deepcopy(env.agent))
+        agent_copy = copy.deepcopy(env.agent)
+        for param in agent_copy.parameters():
+            param.requires_grad = False
+
+        agents.append(agent_copy)
 
     for env in federated_envs:
         env.set_neighbors(agents)
@@ -134,6 +138,8 @@ if __name__ == "__main__":
 
             if args.average_weights or args.use_comm_penalty:
                 exchange_weights(federated_envs)
+
+            torch.cuda.empty_cache()
 
     for env in federated_envs:
         env.close()

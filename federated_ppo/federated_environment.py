@@ -16,7 +16,7 @@ class FederatedEnvironment():
         self.envs = envs
         self.agent_idx = agent_idx
         self.agent = agent
-        self.previous_version_of_agent = copy.deepcopy(self.agent)
+        self.previous_version_of_agent = self._create_agent_without_gradients(agent)
         self.optimizer = optimizer
         self.comm_matrix = None
         self.neighbors = None
@@ -38,10 +38,21 @@ class FederatedEnvironment():
 
         self.num_steps = 0
         self.start_time = time.time()
-        self.next_obs = torch.Tensor(envs.reset(seed=[args.seed + args.num_envs * self.agent_idx + i for i in range(args.num_envs)], device=device)[0])
+        self.next_obs = torch.tensor(
+            envs.reset(seed=[args.seed + args.num_envs * self.agent_idx + i for i in range(args.num_envs)])[0],
+            dtype=torch.float32,
+            device=device
+        )
         self.next_done = torch.zeros(args.num_envs, device=device)
 
         self.episodic_returns = {}
+
+    def _create_agent_without_gradients(self, agent):
+        with torch.no_grad():
+            agent_copy = copy.deepcopy(agent)
+            for param in agent_copy.parameters():
+                param.requires_grad = False
+        return agent_copy
 
     def set_neighbors(self, agents):
         self.neighbors = agents
@@ -81,7 +92,7 @@ class FederatedEnvironment():
                 self.next_obs, reward, done, truncations, info = self.envs.step(action.cpu().numpy())
                 # print(torch.tensor(reward).to(device))
                 self.rewards[step] = torch.tensor(reward, device=self.device).view(-1)
-                self.next_obs, self.next_done = torch.Tensor(self.next_obs, device=self.device), torch.Tensor(done, device=self.device)
+                self.next_obs, self.next_done = torch.tensor(self.next_obs, dtype=torch.float32, device=self.device), torch.tensor(done, dtype=torch.float32, device=self.device)
 
                 # print("info: ", info)
                 if len(info) > 0:
@@ -268,7 +279,8 @@ class FederatedEnvironment():
                     if approx_kl > args.target_kl:
                         break
 
-            self.previous_version_of_agent.load_state_dict(self.agent.state_dict())
+            del self.previous_version_of_agent
+            self.previous_version_of_agent = self._create_agent_without_gradients(self.agent)
 
             y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
             var_y = np.var(y_true)
