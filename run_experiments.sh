@@ -3,10 +3,14 @@
 export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
 export CUDA_DEVICE_ORDER=PCI_BUS_ID
 
-GPUS=(0 1)
-MAX_JOBS=4
+GPUS=(0 1 6 7)
+CPU_SETS=("0-3" "4-7" "8-11")
+MAX_JOBS=6
 
 mkdir -p logs
+
+gpu_index=0
+cpu_index=0
 
 # Запускаем все команды из файла commands.txt
 cat commands.txt | while read -r cmd; do
@@ -22,16 +26,19 @@ cat commands.txt | while read -r cmd; do
     fi
 
     GPU="${GPUS[$gpu_index]}"
-    echo "Выбран GPU = $GPU для команды: $cmd"
+    CPU_CORES="${CPU_SETS[$cpu_index]}"
+    echo "Выбран GPU = $GPU, CPU Cores = $CPU_CORES для команды: $cmd"
 
     gpu_index=$(( (gpu_index + 1) % ${#GPUS[@]} ))
+    cpu_index=$(( (cpu_index + 1) % ${#CPU_SETS[@]} ))
 
     echo "Running: $cmd"  # Отладочный вывод команды
     logfile="logs/setup_${setup_id}.log"
     echo "Log file: $logfile"  # Показываем, куда пишется лог
 
     CUDA_VISIBLE_DEVICES="$GPU" \
-    $cmd > "$logfile" 2>&1 &
+      taskset -c "$CPU_CORES" \
+      $cmd > "$logfile" 2>&1 &
     # sg mygroup -c "$cmd > \"$logfile\" 2>&1 &"
 
     # Ограничиваем количество одновременно запущенных процессов

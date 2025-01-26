@@ -23,12 +23,12 @@ class FederatedEnvironment():
         self.args = args
 
         # ALGO Logic: Storage setup
-        self.obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
-        self.actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
-        self.logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
-        self.rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
-        self.dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
-        self.values = torch.zeros((args.num_steps, args.num_envs)).to(device)
+        self.obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape, device=device)
+        self.actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape, device=device)
+        self.logprobs = torch.zeros((args.num_steps, args.num_envs), device=device)
+        self.rewards = torch.zeros((args.num_steps, args.num_envs), device=device)
+        self.dones = torch.zeros((args.num_steps, args.num_envs), device=device)
+        self.values = torch.zeros((args.num_steps, args.num_envs), device=device)
 
         self.writer = SummaryWriter(f"runs/{run_name}_agent_{agent_idx}", comment=args.exp_description)
         self.writer.add_text(
@@ -38,8 +38,10 @@ class FederatedEnvironment():
 
         self.num_steps = 0
         self.start_time = time.time()
-        self.next_obs = torch.Tensor(envs.reset(seed=[args.seed + args.num_envs * self.agent_idx + i for i in range(args.num_envs)])[0]).to(device)
-        self.next_done = torch.zeros(args.num_envs).to(device)
+        self.next_obs = torch.Tensor(envs.reset(seed=[args.seed + args.num_envs * self.agent_idx + i for i in range(args.num_envs)], device=device)[0])
+        self.next_done = torch.zeros(args.num_envs, device=device)
+
+        self.episodic_returns = {}
 
     def set_neighbors(self, agents):
         self.neighbors = agents
@@ -47,14 +49,14 @@ class FederatedEnvironment():
     def set_comm_matrix(self, comm_matrix):
         self.comm_matrix = comm_matrix
 
-    def local_update(self, global_step):
+    def local_update(self, number_of_communications):
         args = self.args
         # TRY NOT TO MODIFY: start the game
         for update in range(1, args.local_updates + 1):
             # if self.args.gym_id.startswith("MiniGrid") and self.agent_idx == 1:
             #     print(self.envs.envs[0].pprint_grid())
             # Annealing the rate if instructed to do so.
-            num_updates = global_step * args.local_updates + update
+            num_updates = number_of_communications * args.local_updates + update
             if args.anneal_lr:
                 frac = 1.0 - (num_updates - 1.0) / int(args.total_timesteps // args.batch_size)
                 # note: denominator is not equal to (args.local_updates * args.global_updates)
@@ -78,26 +80,28 @@ class FederatedEnvironment():
                 # print(envs.step(action.cpu().numpy()))
                 self.next_obs, reward, done, truncations, info = self.envs.step(action.cpu().numpy())
                 # print(torch.tensor(reward).to(device))
-                self.rewards[step] = torch.tensor(reward).to(self.device).view(-1)
-                self.next_obs, self.next_done = torch.Tensor(self.next_obs).to(self.device), torch.Tensor(done).to(self.device)
+                self.rewards[step] = torch.tensor(reward, device=self.device).view(-1)
+                self.next_obs, self.next_done = torch.Tensor(self.next_obs, device=self.device), torch.Tensor(done, device=self.device)
 
                 # print("info: ", info)
                 if len(info) > 0:
-                    # for i in range(args.num_envs):
-                    for i in range(1):
+                    for i in range(args.num_envs):
                         if info['_final_observation'][i]:
                             item = info['final_info'][i]
                             if "episode" in item.keys():
-                                print(f"global_step={self.num_steps}, episodic_return={item['episode']['r']}")
-                                self.writer.add_scalar("charts/episodic_return", item["episode"]["r"], self.num_steps)
-                                self.writer.add_scalar("charts/episodic_length", item["episode"]["l"], self.num_steps)
-                                break
+                                # print(f"global_step={self.num_steps - args.num_envs + i}, episodic_return={item['episode']['r']}")
+                                self.writer.add_scalar("charts/episodic_return", item["episode"]["r"], self.num_steps - args.num_envs + i)
+                                self.writer.add_scalar("charts/episodic_length", item["episode"]["l"], self.num_steps - args.num_envs + i)                                
+                                if number_of_communications not in self.episodic_returns.keys():
+                                    self.episodic_returns[number_of_communications] = []
+
+                                self.episodic_returns[number_of_communications].append(item["episode"]["r"])
 
             # bootstrap value if not done
             with torch.no_grad():
                 next_value = self.agent.get_value(self.next_obs).reshape(1, -1)
                 if args.gae:
-                    advantages = torch.zeros_like(self.rewards).to(self.device)
+                    advantages = torch.zeros_like(self.rewards, device=self.device)
                     lastgaelam = 0
                     for t in reversed(range(args.num_steps)):
                         if t == args.num_steps - 1:
@@ -110,7 +114,7 @@ class FederatedEnvironment():
                         advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
                     returns = advantages + self.values
                 else:
-                    returns = torch.zeros_like(rewards).to(self.device)
+                    returns = torch.zeros_like(rewards, device=self.device)
                     for t in reversed(range(args.num_steps)):
                         if t == args.num_steps - 1:
                             nextnonterminal = 1.0 - next_done
@@ -260,11 +264,11 @@ class FederatedEnvironment():
                     nn.utils.clip_grad_norm_(self.agent.parameters(), args.max_grad_norm)
                     self.optimizer.step()
 
-                self.previous_version_of_agent = copy.deepcopy(self.agent)
-
                 if args.target_kl is not None:
                     if approx_kl > args.target_kl:
                         break
+
+            self.previous_version_of_agent.load_state_dict(self.agent.state_dict())
 
             y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
             var_y = np.var(y_true)
@@ -281,8 +285,15 @@ class FederatedEnvironment():
                 self.writer.add_scalar("losses/clipfrac", np.mean(clipfracs), self.num_steps)
 
             self.writer.add_scalar("losses/explained_variance", explained_var, self.num_steps)
-            print("SPS:", int(self.num_steps / (time.time() - self.start_time)))
+            # print("SPS:", int(self.num_steps / (time.time() - self.start_time)))
             self.writer.add_scalar("charts/SPS", int(self.num_steps / (time.time() - self.start_time)), self.num_steps)
+
+        average_episodic_return_between_communications = 0
+        if number_of_communications in self.episodic_returns.keys():
+            average_episodic_return_between_communications = np.mean(self.episodic_returns[number_of_communications])
+            self.writer.add_scalar("charts/average_episodic_return_between_communications", average_episodic_return_between_communications, number_of_communications)
+
+        print("agent_idx: ", self.agent_idx, ", average_episodic_return_between_communications: ", average_episodic_return_between_communications)
 
     def close(self):
         self.envs.close()

@@ -64,7 +64,7 @@ def generate_federated_system(device, args, run_name):
         # print("generate_federated_system: Envs are created")
         assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
-        agent = Agent(envs, args, is_grid=args.gym_id.startswith("MiniGrid")).to(device)
+        agent = Agent(envs, args, is_grid=(args.gym_id.startswith("MiniGrid") or args.use_custom_env)).to(device)
         optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)  
 
         federated_envs.append(FederatedEnvironment(device, args, run_name, envs, agent_idx, agent, optimizer))
@@ -80,8 +80,8 @@ def generate_federated_system(device, args, run_name):
     return federated_envs
 
 
-def local_update(federated_env, global_step) -> None:
-    federated_env.local_update(global_step)
+def local_update(federated_env, number_of_communications) -> None:
+    federated_env.local_update(number_of_communications)
 
 
 if __name__ == "__main__":
@@ -120,11 +120,11 @@ if __name__ == "__main__":
     federated_envs = generate_federated_system(device, args, run_name)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.n_agents) as executor:
-        for global_step in range(0, args.global_updates):
-            print("GLOBAL_STEP: ", global_step)
+        for number_of_communications in range(0, args.global_updates):
+            print("Number of completed communications: ", number_of_communications)
             futures = []
             for i in range(args.n_agents):
-                futures.append(executor.submit(local_update, federated_envs[i], global_step))
+                futures.append(executor.submit(local_update, federated_envs[i], number_of_communications))
 
             for future in futures:
                 future.result()

@@ -8,7 +8,7 @@ from distutils.util import strtobool
 import gym
 import torch.nn.functional as F
 from custom_envs.classic_control.cartpole import CustomCartPoleEnv
-from custom_envs.custom_minigrid.simple_env import SimpleEnv
+from custom_envs.custom_minigrid.simple_env import SimpleEnv, CustomCrossingEnv
 from minigrid.wrappers import RGBImgPartialObsWrapper, ImgObsWrapper
 
 
@@ -100,6 +100,9 @@ def parse_args():
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.global_updates = int(int(args.total_timesteps // args.batch_size) // args.local_updates)
+    print("Expected number of communications in total: ", args.global_updates)
+    print("Local updates between communications: ", args.batch_size * args.local_updates)
+
     # fmt: on
     return args
 
@@ -113,7 +116,7 @@ def create_comm_matrix(n_agents, comm_matrix_config):
             for right, coef in coeffs.items():
                 left_idx = int(left)
                 right_idx = int(right)
-                W[left_idx - 1][right_idx - 1] = W[right_idx - 1][left_idx - 1] = coef
+                W[left_idx][right_idx] = W[right_idx][left_idx] = coef
 
     return torch.tensor(W, dtype=torch.float32)
 
@@ -138,16 +141,21 @@ def make_env(args, env_parameters_config, gym_id, seed, idx, capture_video, run_
         import minigrid
 
         if args.use_custom_env:
-            if env_parameters_config is not None:
-                env_parameters = extract_env_parameters(env_parameters_config, idx)
-                env = CustomCartPoleEnv(render_mode="rgb_array", **env_parameters)
+            if gym_id.startswith("MiniGrid"):
+                # Analogue of MiniGrid-LavaCrossingS9N2-v0
+                # See /home/smirnov/miniconda3/envs/fedrl/lib/python3.11/site-packages/minigrid/__init__.py
+                env = ImgObsWrapper(CustomCrossingEnv(agent_id=idx+1, size=9, num_crossings=2,vertical_obstacles=(idx in [0, 1, 2])))
             else:
-                env = SimpleEnv(render_mode="rgb_array", size=6)
-                obs1 = env.reset() # obs: {'image': numpy.ndarray (7, 7, 3),'direction': ,'mission': ,}
-                env = RGBImgPartialObsWrapper(env) # Get pixel observations
-                obs2 = env.reset() # obs: {'mission': ,'image': numpy.ndarray (56, 56, 3)}
-                env = ImgObsWrapper(env) # Get rid of the 'mission' field
-                obs3 = env.reset() # obs: numpy.ndarray (56, 56, 3)
+                if env_parameters_config is not None:
+                    env_parameters = extract_env_parameters(env_parameters_config, idx)
+                    env = CustomCartPoleEnv(render_mode="rgb_array", **env_parameters)
+                else:
+                    env = SimpleEnv(render_mode="rgb_array", size=6)
+                    obs1 = env.reset() # obs: {'image': numpy.ndarray (7, 7, 3),'direction': ,'mission': ,}
+                    env = RGBImgPartialObsWrapper(env) # Get pixel observations
+                    obs2 = env.reset() # obs: {'mission': ,'image': numpy.ndarray (56, 56, 3)}
+                    env = ImgObsWrapper(env) # Get rid of the 'mission' field
+                    obs3 = env.reset() # obs: numpy.ndarray (56, 56, 3)
         else:
             env = gym.make(gym_id, render_mode="rgb_array")
             if gym_id.startswith("MiniGrid"):

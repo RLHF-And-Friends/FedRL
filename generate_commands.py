@@ -13,7 +13,7 @@ grid_params = {
     "use-comm-penalty": [True],
     "comm-penalty-coeff": [0.1],
     "sum-kl-divergencies": [False, True],
-    "average-weights":[False],
+    # "average-weights":[False], by default is False
     # "average-weights":[False, True],
     "gym-id": ["MiniGrid-LavaCrossingS9N2-v0"],
     "learning-rate": [2.5e-4],
