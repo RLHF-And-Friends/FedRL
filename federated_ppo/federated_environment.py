@@ -168,25 +168,25 @@ class FederatedEnvironment():
                         mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
 
                     # Policy loss
-                    if args.use_clipping:
-                        pg_loss1 = -ratio * mb_advantages
+                    pg_loss1 = -ratio * mb_advantages
+                    if args.objective_mode == 2: # Clipping
                         pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
                         pg_loss = torch.max(pg_loss1, pg_loss2).mean()
+                    else:
+                        assert args.objective_mode == 3
+
+                        if args.use_mdpo or not args.use_comm_penalty:
+                            _, old_b_logprobs, _, _ = self.previous_version_of_agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
+                            _, current_b_logprobs, _, _ = self.agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
+                            kl_penalty = compute_kl_divergence(old_b_logprobs, current_b_logprobs)
+                            self.writer.add_scalar(f"charts/kl_penalty_{self.agent_idx}", kl_penalty, self.num_steps)
+
+                            # For first batch pg_loss_2 = 0 since self.previous_version_of_agent is equal to self.agent
+                            pg_loss2 = args.penalty_coeff * kl_penalty
+                            pg_loss = (pg_loss1 + pg_loss2).mean()
+                        else:
+                            pg_loss = pg_loss1.mean()
                     
-                    if not args.use_clipping or args.use_mdpo:
-                        '''
-                        For first batch pg_loss = 0 since self.previous_version_of_agent is equal to self.agent
-                        '''
-                        # print("mb inds shape: ", mb_inds.shape)
-                        pg_loss1 = -mb_advantages * ratio
-                        _, old_b_logprobs, _, _ = self.previous_version_of_agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
-                        _, current_b_logprobs, _, _ = self.agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
-                        # print("old shape: ", old_b_logprobs.shape)
-                        # print("current shape: ", current_b_logprobs.shape)
-                        kl_penalty = compute_kl_divergence(old_b_logprobs, current_b_logprobs)
-                        pg_loss2 = args.penalty_coeff * kl_penalty
-                        self.writer.add_scalar(f"charts/kl_penalty_{self.agent_idx}", kl_penalty, self.num_steps)
-                        pg_loss = (pg_loss1 + pg_loss2).mean()
 
                     # Value loss
                     newvalue = newvalue.view(-1)
@@ -203,13 +203,11 @@ class FederatedEnvironment():
                     else:
                         v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
 
-                    if not args.use_mdpo:
-                        entropy_loss = entropy.mean()
-                    
                     if args.use_mdpo:
                         loss = pg_loss + v_loss * args.vf_coef
                         abs_loss = abs(pg_loss) + abs(v_loss * args.vf_coef) # for logging
                     else:
+                        entropy_loss = entropy.mean()
                         loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
                         abs_loss = abs(pg_loss) + abs(args.ent_coef * entropy_loss) + abs(v_loss * args.vf_coef) # for logging
 
@@ -226,19 +224,25 @@ class FederatedEnvironment():
                         weighted_neighbor_b_logprobs = torch.zeros_like(current_b_logprobs)
 
                         for neighbor_agent_idx in range(args.n_agents):
-                            if neighbor_agent_idx != self.agent_idx:
-                                comm_coeff = self.comm_matrix[self.agent_idx][neighbor_agent_idx]
-                                if comm_coeff != 0:
-                                    sum_comm_weight += comm_coeff
+                            comm_coeff = self.comm_matrix[self.agent_idx][neighbor_agent_idx]
+                            if comm_coeff != 0:
+                                sum_comm_weight += comm_coeff
 
+                                if neighbor_agent_idx == self.agent_idx:
+                                    # Note that it differs from self.neighbors[self.agent_idx] after first
+                                    # local update since self.neighbors are fixed between global updates
+                                    # unlike self.previous_version_of_agent
+                                    neighbor_agent = self.previous_version_of_agent
+                                else:
                                     neighbor_agent = self.neighbors[neighbor_agent_idx]
-                                    _, neighbor_b_logprobs, _, _ = neighbor_agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
 
-                                    kl_div_with_neighbor = compute_kl_divergence(current_b_logprobs, neighbor_b_logprobs)
-                                    self.writer.add_scalar(f"charts/kl_{self.agent_idx}_{neighbor_agent_idx}", kl_div_with_neighbor, self.num_steps)
+                                _, neighbor_b_logprobs, _, _ = neighbor_agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
 
-                                    sum_kl_penalty += comm_coeff * kl_div_with_neighbor
-                                    weighted_neighbor_b_logprobs += comm_coeff * neighbor_b_logprobs
+                                kl_div_with_neighbor = compute_kl_divergence(current_b_logprobs, neighbor_b_logprobs)
+                                self.writer.add_scalar(f"charts/kl_{self.agent_idx}_{neighbor_agent_idx}", kl_div_with_neighbor, self.num_steps)
+
+                                sum_kl_penalty += comm_coeff * kl_div_with_neighbor
+                                weighted_neighbor_b_logprobs += comm_coeff * neighbor_b_logprobs
 
                         if sum_comm_weight > 0:
                             sum_kl_penalty /= sum_comm_weight
@@ -279,8 +283,9 @@ class FederatedEnvironment():
                     if approx_kl > args.target_kl:
                         break
 
-            del self.previous_version_of_agent
-            self.previous_version_of_agent = self._create_agent_without_gradients(self.agent)
+            self.previous_version_of_agent.load_state_dict(self.agent.state_dict())
+            for param in self.previous_version_of_agent.parameters():
+                param.requires_grad = False
 
             y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
             var_y = np.var(y_true)
@@ -297,7 +302,6 @@ class FederatedEnvironment():
                 self.writer.add_scalar("losses/clipfrac", np.mean(clipfracs), self.num_steps)
 
             self.writer.add_scalar("losses/explained_variance", explained_var, self.num_steps)
-            # print("SPS:", int(self.num_steps / (time.time() - self.start_time)))
             self.writer.add_scalar("charts/SPS", int(self.num_steps / (time.time() - self.start_time)), self.num_steps)
 
         average_episodic_return_between_communications = 0

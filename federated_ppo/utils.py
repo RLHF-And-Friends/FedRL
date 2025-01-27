@@ -72,8 +72,12 @@ def parse_args():
         help="Toggles advantages normalization")
     parser.add_argument("--use-mdpo", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=False,
         help="Use MDPO instead of PPO")
-    parser.add_argument("--use-clipping", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="Use clipping or KL penalty (adaptive loss)")
+    parser.add_argument("--objective-mode", type=int, default=3,
+        help="Three modes for objective:\n" \
+        "1. No clipping or KL-penalty\n" \
+        "2. Clipping\n" \
+        "3. KL penalty (fixed or adaptive)" \
+        "For more details see https://arxiv.org/pdf/1707.06347")
     parser.add_argument("--use-comm-penalty", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Penalize for kl divergence with neighbors or not")
     parser.add_argument("--sum-kl-divergencies", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
@@ -96,12 +100,18 @@ def parse_args():
         help="the maximum norm for the gradient clipping")
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
+
+    parser.add_argument("--see-through-walls", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+        help="Minigrid training parameter: Set this to True for maximum speed")
+
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.global_updates = int(int(args.total_timesteps // args.batch_size) // args.local_updates)
     print("Expected number of communications in total: ", args.global_updates)
     print("Local updates between communications: ", args.batch_size * args.local_updates)
+
+    assert args.objective_mode in [2, 3]
 
     # fmt: on
     return args
@@ -144,9 +154,9 @@ def make_env(args, env_parameters_config, gym_id, seed, idx, capture_video, run_
             if gym_id.startswith("MiniGrid-CustomLavaCrossingS9N2"):
                 # Analogue of MiniGrid-LavaCrossingS9N2-v0
                 # See /home/smirnov/miniconda3/envs/fedrl/lib/python3.11/site-packages/minigrid/__init__.py
-                env = ImgObsWrapper(CustomCrossingEnv(agent_id=idx+1, size=9, num_crossings=2,vertical_obstacles=(idx in [0, 1, 2])))
+                env = ImgObsWrapper(CustomCrossingEnv(agent_id=idx+1, size=9, see_through_walls=args.see_through_walls, num_crossings=2,vertical_obstacles=(idx in [0, 1, 2])))
             elif gym_id.startswith("MiniGrid-CustomSimpleCrossingS9N2"):
-                env = ImgObsWrapper(CustomCrossingEnv(obstacle_type=Wall, agent_id=idx+1, size=9, num_crossings=2,vertical_obstacles=(idx in [0, 1, 2])))
+                env = ImgObsWrapper(CustomCrossingEnv(obstacle_type=Wall, see_through_walls=args.see_through_walls, agent_id=idx+1, size=9, num_crossings=2,vertical_obstacles=(idx in [0, 1, 2])))
             # else:
             #     if env_parameters_config is not None:
             #         env_parameters = extract_env_parameters(env_parameters_config, idx)
