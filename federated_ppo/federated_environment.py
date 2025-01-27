@@ -248,7 +248,7 @@ class FederatedEnvironment():
                             sum_kl_penalty /= sum_comm_weight
                             weighted_neighbor_b_logprobs /= sum_comm_weight
 
-                            kl_div_weighted = compute_kl_divergence(current_b_logprobs, weighted_neighbor_b_logprobs)
+                            kl_div_weighted = compute_kl_divergence(weighted_neighbor_b_logprobs, current_b_logprobs)
                             
                             self.writer.add_scalar(f"charts/sum_kl_{self.agent_idx}", sum_kl_penalty, self.num_steps)
                             self.writer.add_scalar(f"charts/weighted_kl_{self.agent_idx}", kl_div_weighted, self.num_steps)
@@ -267,7 +267,7 @@ class FederatedEnvironment():
 
                     self.writer.add_scalar(f"charts/loss_fractions/pg_loss", abs(pg_loss / abs_loss), self.num_steps)
                     if args.use_comm_penalty:
-                        self.writer.add_scalar(f"charts/loss_fractions/kl_penalty_loss", abs(args.comm_penalty_coeff * kl_penalty / abs_loss), self.num_steps)
+                        self.writer.add_scalar(f"charts/loss_fractions/comm_penalty_loss", abs(args.comm_penalty_coeff * kl_penalty / abs_loss), self.num_steps)
                                         
                     if not args.use_mdpo:
                         self.writer.add_scalar(f"charts/loss_fractions/entropy_loss", abs(entropy_loss * args.ent_coef / abs_loss), self.num_steps)
