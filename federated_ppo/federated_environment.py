@@ -30,7 +30,7 @@ class FederatedEnvironment():
         self.dones = torch.zeros((args.num_steps, args.num_envs), device=device)
         self.values = torch.zeros((args.num_steps, args.num_envs), device=device)
 
-        self.writer = SummaryWriter(f"runs/{run_name}_agent_{agent_idx}", comment=args.exp_description)
+        self.writer = SummaryWriter(f"runs/{args.setup_id}/{run_name}_agent_{agent_idx}", comment=args.exp_description)
         self.writer.add_text(
             "hyperparameters",
             "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
