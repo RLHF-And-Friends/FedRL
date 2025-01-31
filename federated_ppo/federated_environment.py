@@ -181,9 +181,9 @@ class FederatedEnvironment():
 
                             if args.objective_mode == 4:
                                 # use mdpo
-                                kl_penalty = compute_kl_divergence(old_b_logprobs, current_b_logprobs)
-                            else:
                                 kl_penalty = compute_kl_divergence(current_b_logprobs, old_b_logprobs)
+                            else:
+                                kl_penalty = compute_kl_divergence(old_b_logprobs, current_b_logprobs)
 
                             self.writer.add_scalar(f"charts/kl_penalty_{self.agent_idx}", kl_penalty, self.num_steps)
 

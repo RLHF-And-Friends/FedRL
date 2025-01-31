@@ -12,6 +12,55 @@
 
 ## Federated PPO
 
+### Objectives
+
+PPO article: https://arxiv.org/pdf/1707.06347
+
+MDPO article: https://arxiv.org/pdf/2005.09814
+
+Main objective:
+$
+    L_t^{CLIP+VF+S}(\theta) = \hat{\mathbb{E}}_t \left[ L_t^{CLIP}(\theta) - c_1 L_t^{VF}(\theta) + c_2 S[\pi_\theta](s_t) \right]
+$
+
+$L_t^{CLIP}(\theta)$ variations:
+
+1. No clipping or penalty:
+$$
+    L_t(\theta) = r_t(\theta)\hat{A}_t
+$$
+
+2. Clipping (equals to $L_t^{CLIP}(\theta)$):
+$$
+    L_t(\theta) = \min\left(r_t(\theta)\hat{A}_t, \text{clip}(r_t(\theta), 1 - \epsilon, 1 + \epsilon)\hat{A}_t\right)
+$$
+
+3. KL penalty (fixed or adaptive):
+
+- No communication:
+$$
+    L_t(\theta) = r_t(\theta)\hat{A}_t - \beta \text{KL}[\pi_{\theta_{\text{old}}}, \pi_\theta]
+$$
+
+- With communication:
+$$
+    L_t(\theta) = r_t(\theta) \hat{A}_t - \beta \, \text{KL}\left[ \sum_{i=1}^n w_i \pi_{\theta_i}, \pi_\theta \right]
+$$
+
+
+4. MDPO:
+
+- No communication:
+$$
+    L_t(\theta) = r_t(\theta)\hat{A}_t - \beta \text{KL}[\pi_\theta, \pi_{\theta_{\text{old}}}]
+$$
+
+- With communication:
+$$
+    L_t(\theta) = r_t(\theta) \hat{A}_t - \beta \, \text{KL}\left[ \pi_\theta, \sum_{i=1}^n w_i \pi_{\theta_i} \right]
+$$
+
+
 ### Описание флагов
 
 Флаги описаны здесь:
