@@ -70,17 +70,16 @@ def parse_args():
         help="the lambda for the general advantage estimation")
     parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggles advantages normalization")
-    parser.add_argument("--use-mdpo", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=False,
-        help="Use MDPO instead of PPO")
     parser.add_argument("--objective-mode", type=int, default=3,
         help="Three modes for objective:\n" \
         "1. No clipping or KL-penalty\n" \
         "2. Clipping\n" \
-        "3. KL penalty (fixed or adaptive)" \
+        "3. KL penalty (fixed or adaptive)\n" \
+        "\*4. (extra) MDPO\n" \
         "For more details see https://arxiv.org/pdf/1707.06347")
     parser.add_argument("--use-comm-penalty", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Penalize for kl divergence with neighbors or not")
-    parser.add_argument("--sum-kl-divergencies", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+    parser.add_argument("--sum-kl-divergencies", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=False,
         help="In case if --use-comm-penalty=True, sum KL divergencies or KL with weighted distributions")
     parser.add_argument("--average-weights", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Average agents weights or not") 
@@ -103,6 +102,8 @@ def parse_args():
 
     parser.add_argument("--see-through-walls", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Minigrid training parameter: Set this to True for maximum speed")
+    parser.add_argument("--use-gym-id-in-run-name", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+        help="run_name format parameter")
 
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
@@ -111,7 +112,7 @@ def parse_args():
     print("Expected number of communications in total: ", args.global_updates)
     print("Local updates between communications: ", args.batch_size * args.local_updates)
 
-    assert args.objective_mode in [2, 3]
+    assert args.objective_mode in [2, 3, 4]
 
     # fmt: on
     return args

@@ -173,12 +173,18 @@ class FederatedEnvironment():
                         pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
                         pg_loss = torch.max(pg_loss1, pg_loss2).mean()
                     else:
-                        assert args.objective_mode == 3
+                        assert args.objective_mode in [3, 4]
 
-                        if args.use_mdpo or not args.use_comm_penalty:
+                        if not args.use_comm_penalty:
                             _, old_b_logprobs, _, _ = self.previous_version_of_agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
                             _, current_b_logprobs, _, _ = self.agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
-                            kl_penalty = compute_kl_divergence(old_b_logprobs, current_b_logprobs)
+
+                            if args.objective_mode == 4:
+                                # use mdpo
+                                kl_penalty = compute_kl_divergence(old_b_logprobs, current_b_logprobs)
+                            else:
+                                kl_penalty = compute_kl_divergence(current_b_logprobs, old_b_logprobs)
+
                             self.writer.add_scalar(f"charts/kl_penalty_{self.agent_idx}", kl_penalty, self.num_steps)
 
                             # For first batch pg_loss_2 = 0 since self.previous_version_of_agent is equal to self.agent
@@ -190,7 +196,7 @@ class FederatedEnvironment():
 
                     # Value loss
                     newvalue = newvalue.view(-1)
-                    if not args.use_mdpo and args.clip_vloss:
+                    if args.clip_vloss:
                         v_loss_unclipped = (newvalue - b_returns[mb_inds]) ** 2
                         v_clipped = b_values[mb_inds] + torch.clamp(
                             newvalue - b_values[mb_inds],
@@ -203,13 +209,15 @@ class FederatedEnvironment():
                     else:
                         v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
 
-                    if args.use_mdpo:
-                        loss = pg_loss + v_loss * args.vf_coef
-                        abs_loss = abs(pg_loss) + abs(v_loss * args.vf_coef) # for logging
-                    else:
-                        entropy_loss = entropy.mean()
-                        loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
-                        abs_loss = abs(pg_loss) + abs(args.ent_coef * entropy_loss) + abs(v_loss * args.vf_coef) # for logging
+                    # if args.objective_mode == 4:
+                    #     # mdpo
+                    #     loss = pg_loss
+                    #     abs_loss = abs(pg_loss) # for logging
+                    # else:
+                    #     # objective mode might be any of [1, 2, 3]
+                    entropy_loss = entropy.mean()
+                    loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
+                    abs_loss = abs(pg_loss) + abs(args.ent_coef * entropy_loss) + abs(v_loss * args.vf_coef) # for logging
 
                     if args.use_comm_penalty:
                         # log two options
@@ -248,8 +256,13 @@ class FederatedEnvironment():
                             sum_kl_penalty /= sum_comm_weight
                             weighted_neighbor_b_logprobs /= sum_comm_weight
 
-                            kl_div_weighted = compute_kl_divergence(weighted_neighbor_b_logprobs, current_b_logprobs)
-                            
+                            if args.objective_mode == 4:
+                                # mdpo
+                                kl_div_weighted = compute_kl_divergence(current_b_logprobs, weighted_neighbor_b_logprobs)
+                            else:
+                                # ppo
+                                kl_div_weighted = compute_kl_divergence(weighted_neighbor_b_logprobs, current_b_logprobs)
+
                             self.writer.add_scalar(f"charts/sum_kl_{self.agent_idx}", sum_kl_penalty, self.num_steps)
                             self.writer.add_scalar(f"charts/weighted_kl_{self.agent_idx}", kl_div_weighted, self.num_steps)
 
@@ -269,7 +282,8 @@ class FederatedEnvironment():
                     if args.use_comm_penalty:
                         self.writer.add_scalar(f"charts/loss_fractions/comm_penalty_loss", abs(args.comm_penalty_coeff * kl_penalty / abs_loss), self.num_steps)
                                         
-                    if not args.use_mdpo:
+                    if not args.objective_mode != 4:
+                        # not mdpo
                         self.writer.add_scalar(f"charts/loss_fractions/entropy_loss", abs(entropy_loss * args.ent_coef / abs_loss), self.num_steps)
                         self.writer.add_scalar(f"charts/loss_fractions/value_loss", abs(v_loss * args.vf_coef / abs_loss), self.num_steps)
 
@@ -294,7 +308,8 @@ class FederatedEnvironment():
             # TRY NOT TO MODIFY: record rewards for plotting purposes
             self.writer.add_scalar("charts/learning_rate", self.optimizer.param_groups[0]["lr"], self.num_steps)
             self.writer.add_scalar("losses/policy_loss", pg_loss.item(), self.num_steps)
-            if not args.use_mdpo:
+            if not args.objective_mode != 4:
+                # not mdpo
                 self.writer.add_scalar("losses/value_loss", v_loss.item(), self.num_steps)
                 self.writer.add_scalar("losses/entropy", entropy_loss.item(), self.num_steps)
                 self.writer.add_scalar("losses/old_approx_kl", old_approx_kl.item(), self.num_steps)

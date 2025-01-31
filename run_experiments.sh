@@ -3,9 +3,10 @@
 export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
 export CUDA_DEVICE_ORDER=PCI_BUS_ID
 
-GPUS=(0 1 6 7)
-CPU_SETS=("0-3" "4-7" "8-11")
-MAX_JOBS=6
+GPUS=(0 1 7)
+# CPU_SETS=("0-3" "4-7" "8-11" "12-15" "16-19")
+CPU_SETS=("0-3" "4-7" "8-11" "12-15" "16-19" "20-23" "24-27")
+MAX_JOBS=8
 
 mkdir -p logs
 

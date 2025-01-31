@@ -90,13 +90,24 @@ def local_update(federated_env, number_of_communications) -> None:
 
 if __name__ == "__main__":
     args = parse_args()
-    run_name = args.gym_id
+    if args.use_gym_id_in_run_name:
+        run_name = args.gym_id
+    else:
+        run_name = ""
+
     if args.exp_name != "":
-        run_name += f"__{args.exp_name}"
-        if args.setup_id != "":
-            run_name += f"__{args.setup_id}"
-        if args.seed != "":
-            run_name += f"__seed_{args.seed}"
+        if run_name != "":
+            run_name += "__"
+        run_name += f"{args.exp_name}"
+
+    # if args.setup_id != "":
+    #     if run_name != "":
+    #         run_name += "__"
+    #     run_name += f"__{args.setup_id}"
+
+    if args.seed != "":
+        run_name += f"__seed_{args.seed}"
+
     run_name += f"__{int(time.time())}"
 
     if args.track:
