@@ -182,6 +182,7 @@ def make_env(args, env_parameters_config, gym_id, seed, idx, capture_video, run_
         if capture_video:
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/env_{idx}/{run_name}")
+        print(f"agent_idx: {idx}, seed: {seed}")
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env

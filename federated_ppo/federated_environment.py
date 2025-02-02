@@ -39,7 +39,7 @@ class FederatedEnvironment():
         self.num_steps = 0
         self.start_time = time.time()
         self.next_obs = torch.tensor(
-            envs.reset(seed=[args.seed + args.num_envs * self.agent_idx + i for i in range(args.num_envs)])[0],
+            envs.reset(seed=[10 * i * args.n_agents + args.seed * args.n_agents + agent_idx for i in range(args.num_envs)])[0],
             dtype=torch.float32,
             device=device
         )

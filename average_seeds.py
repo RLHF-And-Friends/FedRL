@@ -22,7 +22,7 @@ def average_logs_across_seeds(logs_dir, setup_id, exp_name, env_id, num_seeds, n
             # Ищем папку, которая начинается с паттерна и заканчивается на _agent_X
             log_dir = [
                 d for d in os.listdir(logs_dir) 
-                if d.startswith(f"{env_id}__{exp_name}__{setup_id}__seed_{seed}__") 
+                if d.startswith(f"{exp_name}__seed_{seed}__") 
                 and d.endswith(f"_agent_{agent}")
             ][0]
             full_log_dir = os.path.join(logs_dir, log_dir)
@@ -53,13 +53,13 @@ def save_averaged_logs(averaged_data, output_dir, tag):
         df.to_csv(os.path.join(output_dir, f"agent_{agent}_{tag.replace('/', '_')}.csv"), index=False)
 
 if __name__ == "__main__":
-    logs_dir = "runs/setup_5_11_fixed_kl_div_weighted"  # Папка с логами
-    setup_id = "setup_5_11_fixed_kl_div_weighted"
+    logs_dir = "runs/setup_5_11_with_self_penalty_ppo"  # Папка с логами
+    setup_id = ""
     exp_name = "GridSearch"
     env_id = "MiniGrid-CustomSimpleCrossingS9N2-v0"
-    num_seeds = 8  # Количество сидов
+    num_seeds = 5  # Количество сидов
     num_agents = 3  # Количество агентов
     tag = "charts/episodic_return"  # Тег для усреднения
     
     averaged_data = average_logs_across_seeds(logs_dir, setup_id, exp_name, env_id, num_seeds, num_agents, tag)
-    save_averaged_logs(averaged_data, "averaged_logs/setup_5_11_fixed_kl_div_weighted", tag)
+    save_averaged_logs(averaged_data, "averaged_logs/setup_5_11_with_self_penalty_ppo", tag)

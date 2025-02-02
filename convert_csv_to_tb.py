@@ -36,6 +36,6 @@ def csv_to_tensorboard(csv_dir, log_dir):
             writer.close()
 
 if __name__ == "__main__":
-    csv_dir = "averaged_logs/setup_5_11_fixed_kl_div_weighted"  # Папка с CSV-файлами
-    log_dir = "runs/setup_5_11_fixed_kl_div_weighted/averaged"  # Папка для логов TensorBoard
+    csv_dir = "averaged_logs/setup_5_11_with_self_penalty_ppo"  # Папка с CSV-файлами
+    log_dir = "runs/setup_5_11_with_self_penalty_ppo/averaged"  # Папка для логов TensorBoard
     csv_to_tensorboard(csv_dir, log_dir)

@@ -62,8 +62,10 @@ def generate_federated_system(device, args, run_name):
     federated_envs = []
 
     for agent_idx in range(args.n_agents):
+        # assumption: seeds < 10
+        # so we need to generate (seeds * num_envs * n_agents) different envs
         envs = gym.vector.SyncVectorEnv(
-            [make_env(args, args.env_parameters_config, args.gym_id, args.seed + i, i, args.capture_video, run_name=run_name) for i in range(args.num_envs)]
+            [make_env(args, args.env_parameters_config, args.gym_id, 10 * i * args.n_agents + args.seed * args.n_agents + agent_idx, i, args.capture_video, run_name=run_name) for i in range(args.num_envs)]
         )
         # print("generate_federated_system: Envs are created")
         assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
