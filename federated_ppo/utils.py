@@ -139,10 +139,11 @@ def extract_env_parameters(env_parameters_config, agent_idx):
         return data["cartpole_parameters"][str(agent_idx + 1)] 
 
 
-def compute_kl_divergence(p, q):
-    p_log = F.log_softmax(p, dim=-1)
-    q_log = F.log_softmax(q, dim=-1)
-    kl_div = (p_log.exp() * (p_log - q_log)).sum()
+def compute_kl_divergence(p_logprob, q_logprob, eps=1e-8):
+    p_probs = p_logprob.exp().clamp(min=eps)
+    # q_probs = q_logprob.exp().clamp(min=eps)
+
+    kl_div = (p_probs * (p_logprob - q_logprob)).sum(dim=-1)
 
     return kl_div
 
