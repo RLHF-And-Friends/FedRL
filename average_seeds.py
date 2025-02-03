@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 def load_tensorboard_logs(log_dir, tag):
     print("Tag: ", tag, ", log_dir: ", log_dir)
-    event_acc = EventAccumulator(log_dir, size_guidance={'scalars': 5000000})
+    event_acc = EventAccumulator(log_dir, size_guidance={'scalars': 0})
     event_acc.Reload()
     if tag not in event_acc.Tags()['scalars']:
         raise ValueError(f"Tag '{tag}' not found in logs at {log_dir}")
@@ -53,7 +53,7 @@ def save_averaged_logs(averaged_data, output_dir, tag):
         df.to_csv(os.path.join(output_dir, f"agent_{agent}_{tag.replace('/', '_')}.csv"), index=False)
 
 if __name__ == "__main__":
-    logs_dir = "runs/setup_5_11_with_self_penalty_ppo"  # Папка с логами
+    logs_dir = "runs/setup_5_11_mdpo"  # Папка с логами
     setup_id = ""
     exp_name = "GridSearch"
     env_id = "MiniGrid-CustomSimpleCrossingS9N2-v0"
@@ -62,4 +62,4 @@ if __name__ == "__main__":
     tag = "charts/episodic_return"  # Тег для усреднения
     
     averaged_data = average_logs_across_seeds(logs_dir, setup_id, exp_name, env_id, num_seeds, num_agents, tag)
-    save_averaged_logs(averaged_data, "averaged_logs/setup_5_11_with_self_penalty_ppo", tag)
+    save_averaged_logs(averaged_data, "averaged_logs/setup_5_11_mdpo", tag)

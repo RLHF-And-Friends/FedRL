@@ -139,12 +139,13 @@ def extract_env_parameters(env_parameters_config, agent_idx):
         return data["cartpole_parameters"][str(agent_idx + 1)] 
 
 
-def compute_kl_divergence(p, q):
-    p_log = F.log_softmax(p, dim=-1)
-    q_log = F.log_softmax(q, dim=-1)
-    kl_div = (p_log.exp() * (p_log - q_log)).sum()
+def compute_kl_divergence(q_logprob, p_logprob, eps=1e-8):
+    # see http://joschu.net/blog/kl-approx.html
+    logratio = p_logprob - q_logprob
+    ratio = logratio.exp()
+    approx_kl = ((ratio - 1) - logratio).mean()
 
-    return kl_div
+    return approx_kl
 
 
 def make_env(args, env_parameters_config, gym_id, seed, idx, capture_video, run_name=None):
