@@ -4,3 +4,6 @@ runs/
 venv/
 __pycache__/
 *.log
+events.out.*
+nohup.out
+logs/
