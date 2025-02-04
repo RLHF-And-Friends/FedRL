@@ -246,7 +246,7 @@ class FederatedEnvironment():
 
                                 _, neighbor_b_logprobs, _, _ = neighbor_agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
 
-                                kl_div_with_neighbor = compute_kl_divergence(p_logprob=current_b_logprobs, q_logprob=neighbor_b_logprobs)
+                                kl_div_with_neighbor = compute_kl_divergence(q_logprob=current_b_logprobs, p_logprob=neighbor_b_logprobs)
                                 self.writer.add_scalar(f"charts/kl_{self.agent_idx}_{neighbor_agent_idx}", kl_div_with_neighbor, self.num_steps)
 
                                 sum_kl_penalty += comm_coeff * kl_div_with_neighbor
