@@ -1,5 +1,21 @@
 # FedRL
 
+## Установка зависимостей
+Создание среды с установкой списка пакетов:
+```sh
+conda create --name fedrl --file spec-file.txt
+```
+
+Список пакетов, установленных в текущей conda-среде:
+```sh
+conda list --explicit > spec-file.txt
+```
+
+Активация среды:
+```
+conda activate fedrl
+```
+
 ## ppo.py
 
 Решения возможных проблем при запуске программы:
