@@ -44,6 +44,7 @@ def average_weights(federated_envs) -> None:
     
         print("agent: ", i, ", averaged weights: ", averaged_weights)
 
+
 def exchange_weights(federated_envs) -> None:
     agents = []
     for env in federated_envs:
@@ -55,6 +56,21 @@ def exchange_weights(federated_envs) -> None:
 
     for env in federated_envs:
         env.set_neighbors(agents)
+
+
+def update_comm_matrix(federated_envs, policy_aggregation_mode) -> None:
+    # Note: it could be non-symmetric in case of "average_return"
+    assert policy_aggregation_mode == "average_return"
+
+    n = len(federated_envs)
+    a = np.zeros(n)
+    for i, env in enumerate(federated_envs):
+        a[i] = env.last_average_episodic_return_between_communications
+
+    W = np.tile(a, (n, 1))
+
+    for env in federated_envs:
+        env.set_comm_matrix(torch.tensor(W, dtype=torch.float32))
 
 
 def generate_federated_system(device, args, run_name):
@@ -76,7 +92,10 @@ def generate_federated_system(device, args, run_name):
         federated_envs.append(FederatedEnvironment(device, args, run_name, envs, agent_idx, agent, optimizer))
 
     if args.use_comm_penalty or args.average_weights:
-        comm_matrix = create_comm_matrix(n_agents=args.n_agents, comm_matrix_config=args.comm_matrix_config)
+        if args.policy_aggregation_mode == "default":
+            comm_matrix = create_comm_matrix(n_agents=args.n_agents, comm_matrix_config=args.comm_matrix_config)
+        else:
+            comm_matrix = create_comm_matrix(n_agents=args.n_agents, comm_matrix_config=None)
 
         for env in federated_envs:
             env.set_comm_matrix(comm_matrix)
@@ -151,6 +170,9 @@ if __name__ == "__main__":
 
             if args.average_weights or args.use_comm_penalty:
                 exchange_weights(federated_envs)
+
+            if args.policy_aggregation_mode == "average_return":
+                update_comm_matrix(federated_envs, args.policy_aggregation_mode)
 
             torch.cuda.empty_cache()
 

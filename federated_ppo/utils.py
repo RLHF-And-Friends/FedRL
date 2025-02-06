@@ -6,11 +6,12 @@ import json
 from distutils.util import strtobool
 # import gymnasium as gym
 import gym
+import minigrid
 import torch.nn.functional as F
 from custom_envs.classic_control.cartpole import CustomCartPoleEnv
 from custom_envs.minigrid.custom_minigrid_env import CustomCrossingEnv
 from minigrid.wrappers import RGBImgPartialObsWrapper, ImgObsWrapper
-from minigrid.core.world_object import Wall
+from minigrid.core.world_object import Wall, Lava
 
 
 def parse_args():
@@ -48,6 +49,13 @@ def parse_args():
     # Algorithm specific arguments
     parser.add_argument("--n-agents", type=int, default=2,
         help="number of agents")
+    parser.add_argument("--policy-aggregation-mode", type=str, default="default",
+        help="the way we aggregate policies:\n" \
+        "1. default (communication matrix)\n" \
+        "2. average_return (weigh just neighbors according to their average return between global communications)\n" \
+        "3. scalar_product (scalar product of policies)\n"
+    )
+
     parser.add_argument("--comm-matrix-config", type=str, default=None, help="path to comm_matrix json-config")
     parser.add_argument("--env-parameters-config", type=str, default=None, help="path to cartpole environment json-config")
     parser.add_argument("--local-updates", type=int, default=16,
@@ -113,21 +121,32 @@ def parse_args():
     print("Local updates between communications: ", args.batch_size * args.local_updates)
 
     assert args.objective_mode in [2, 3, 4]
+    assert args.policy_aggregation_mode in ["default", "average_return", "scalar_product"]
+
+    if args.policy_aggregation_mode == "scalar_product":
+        assert args.n_agents % 3 == 0 and args.n_agents >= 9
+        args.agents_per_group = args.n_agents // 3
+
+        print("Agents per group: ", args.agents_per_group)
+    elif args.policy_aggregation_mode == "average_return":
+        assert args.n_agents >= 9
 
     # fmt: on
     return args
 
 
-def create_comm_matrix(n_agents, comm_matrix_config):
-    W = np.zeros((n_agents, n_agents))
-
-    with open(comm_matrix_config, 'r') as file:
-        data = json.load(file)
-        for left, coeffs in data["comm_matrix"].items():
-            for right, coef in coeffs.items():
-                left_idx = int(left)
-                right_idx = int(right)
-                W[left_idx][right_idx] = W[right_idx][left_idx] = coef
+def create_comm_matrix(n_agents: int, comm_matrix_config: str | None):
+    if comm_matrix_config:
+        W = np.zeros((n_agents, n_agents))
+        with open(comm_matrix_config, 'r') as file:
+            data = json.load(file)
+            for left, coeffs in data["comm_matrix"].items():
+                for right, coef in coeffs.items():
+                    left_idx = int(left)
+                    right_idx = int(right)
+                    W[left_idx][right_idx] = W[right_idx][left_idx] = coef
+    else:
+        W = np.eye(n_agents)
 
     return torch.tensor(W, dtype=torch.float32)
 
@@ -149,17 +168,43 @@ def compute_kl_divergence(q_logprob, p_logprob, eps=1e-8):
     return approx_kl
 
 
-def make_env(args, env_parameters_config, gym_id, seed, idx, capture_video, run_name=None):
+def make_env(args, env_parameters_config, gym_id, seed, agent_idx, capture_video, run_name=None):
     def thunk():
-        import minigrid
-
         if args.use_custom_env:
             if gym_id.startswith("MiniGrid-CustomLavaCrossingS9N2"):
-                # Analogue of MiniGrid-LavaCrossingS9N2-v0
-                # See /home/smirnov/miniconda3/envs/fedrl/lib/python3.11/site-packages/minigrid/__init__.py
-                env = ImgObsWrapper(CustomCrossingEnv(agent_id=idx+1, size=9, see_through_walls=args.see_through_walls, num_crossings=2,vertical_obstacles=(idx in [0, 1, 2])))
+                obstacle_type=Lava
             elif gym_id.startswith("MiniGrid-CustomSimpleCrossingS9N2"):
-                env = ImgObsWrapper(CustomCrossingEnv(obstacle_type=Wall, see_through_walls=args.see_through_walls, agent_id=idx+1, size=9, num_crossings=2,vertical_obstacles=(idx in [0, 1, 2])))
+                obstacle_type = Wall
+            else:
+                assert False
+
+            # Analogue of MiniGrid-LavaCrossingS9N2-v0
+            # See /home/smirnov/miniconda3/envs/fedrl/lib/python3.11/site-packages/minigrid/__init__.py
+            
+            agent_corner = 0
+            goal_corner = 2
+            obstacles_dir = 1 # vertical
+            if args.policy_aggregation_mode != "default":
+                obstacles_dir = 0
+
+            group_id = 0
+            if args.policy_aggregation_mode == "scalar_product":                
+                group_id = agent_idx // args.agents_per_group
+                agent_corner = (agent_corner + group_id) % 4
+                goal_corner = (goal_corner + group_id) % 4            
+
+            env = CustomCrossingEnv(
+                obstacle_type=obstacle_type,
+                see_through_walls=args.see_through_walls,
+                agent_id=agent_idx+1,
+                size=9,
+                num_crossings=2,
+                obstacles_dir=obstacles_dir,
+                agent_corner=agent_corner,
+                goal_corner=goal_corner,
+            )
+            
+            env = ImgObsWrapper(env)
             # else:
             #     if env_parameters_config is not None:
             #         env_parameters = extract_env_parameters(env_parameters_config, idx)
@@ -182,9 +227,9 @@ def make_env(args, env_parameters_config, gym_id, seed, idx, capture_video, run_
 
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
-            if idx == 0:
-                env = gym.wrappers.RecordVideo(env, f"videos/env_{idx}/{run_name}")
-        print(f"agent_idx: {idx}, seed: {seed}")
+            if agent_idx == 0:
+                env = gym.wrappers.RecordVideo(env, f"videos/env_{agent_idx}/{run_name}")
+        print(f"agent_idx: {agent_idx}, seed: {seed}, group_id: {group_id}, agent_corner: {agent_corner}, goal_corner: {goal_corner}")
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env

@@ -2,3 +2,5 @@ minigrid==3.0.0
 gym==0.26.2
 tensorboard==2.5.0
 numpy==1.23.5
+tqdm==4.67.1
+tensorboardX==2.6.2.2

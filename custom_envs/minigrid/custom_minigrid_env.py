@@ -88,18 +88,22 @@ class CustomCrossingEnv(MiniGridEnv):
         agent_id,
         size=9,
         num_crossings=1,
-        vertical_obstacles=True,
+        obstacles_dir: int = 1, # [0: vertical and horizontal, 1: vertical, 2: horizontal]
         see_through_walls=True,
         obstacle_type=Lava,
         max_steps: int | None = None,
+        agent_corner: int = 0, # from [0, 1, 2, 3]
+        goal_corner: int = 2, # from [0, 1, 2, 3]
         **kwargs,
     ):
         # self.agent_id = agent_id
-        self.vertical_obstacles = vertical_obstacles
+        self.obstacles_dir = obstacles_dir
         # self.number_of_generated_grids = 0
         self.num_crossings = num_crossings
         self.obstacle_type = obstacle_type
         self.goal_position = None
+        self.agent_corner = agent_corner
+        self.goal_corner = goal_corner
 
         if obstacle_type == Lava:
             mission_space = MissionSpace(mission_func=self._gen_mission_lava)
@@ -137,21 +141,51 @@ class CustomCrossingEnv(MiniGridEnv):
         self.grid.wall_rect(0, 0, width, height)
 
         # Place the agent in the top-left corner
-        self.agent_pos = np.array((1, 1))
+        if self.agent_corner == 0:
+            self.agent_pos = np.array((1, 1))
+        elif self.agent_corner == 1:
+            self.agent_pos = np.array((width - 2, 1))
+        elif self.agent_corner == 2:
+            self.agent_pos = np.array((width - 2, height - 2))
+        elif self.agent_corner == 3:
+            self.agent_pos = np.array((1, height - 2))
+        else:
+            assert False
+
         self.agent_dir = 0
 
         # Place a goal square in the bottom-right corner
-        self.put_obj(Goal(), width - 2, height - 2)
-        self.goal_position = (width - 2, height - 2)
+        x, y = None, None
+        if self.goal_corner == 0:
+            x, y = 1, 1
+        elif self.goal_corner == 1:
+            x, y = width - 2, 1
+        elif self.goal_corner == 2:
+            x, y = width - 2, height - 2
+        elif self.goal_corner == 3:
+            x, y = 1, height - 2
+        else:
+            assert False
+
+        self.put_obj(Goal(), x, y)
+        self.goal_position = (x, y)
 
         # Place obstacles (lava or walls)
         v, h = object(), object()  # singleton `vertical` and `horizontal` objects
 
         # Lava rivers or walls specified by direction and position in grid
-        if self.vertical_obstacles:
+        if self.obstacles_dir == 0:
+            rivers = [
+                (v, i) for i in range(2, height - 2, 2)
+            ] + [
+                (h, j) for j in range(2, width - 2, 2)
+            ]
+        elif self.obstacles_dir == 1:
             rivers = [(v, i) for i in range(2, height - 2, 2)]
-        else:
+        elif self.obstacles_dir == 2:
             rivers = [(h, j) for j in range(2, width - 2, 2)]
+        else:
+            assert False
 
         self.np_random.shuffle(rivers)
         rivers = rivers[: self.num_crossings]  # sample random rivers

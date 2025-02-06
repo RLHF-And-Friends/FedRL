@@ -46,6 +46,7 @@ class FederatedEnvironment():
         self.next_done = torch.zeros(args.num_envs, device=device)
 
         self.episodic_returns = {}
+        self.last_average_episodic_return_between_communications = 0
 
     def _create_agent_without_gradients(self, agent):
         with torch.no_grad():
@@ -324,6 +325,7 @@ class FederatedEnvironment():
             average_episodic_return_between_communications = np.mean(self.episodic_returns[number_of_communications])
             self.writer.add_scalar("charts/average_episodic_return_between_communications", average_episodic_return_between_communications, number_of_communications)
 
+        self.last_average_episodic_return_between_communications = average_episodic_return_between_communications
         print("agent_idx: ", self.agent_idx, ", average_episodic_return_between_communications: ", average_episodic_return_between_communications)
 
     def close(self):
