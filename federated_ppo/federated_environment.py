@@ -7,7 +7,7 @@ import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 
-from .utils import compute_kl_divergence
+from .utils import compute_kl_divergence, get_agent_group_id
 
 
 class FederatedEnvironment():
@@ -232,11 +232,33 @@ class FederatedEnvironment():
                         sum_comm_weight = 0
                         weighted_neighbor_b_logprobs = torch.zeros_like(current_b_logprobs)
 
-                        for neighbor_agent_idx in range(args.n_agents):
-                            comm_coeff = self.comm_matrix[self.agent_idx][neighbor_agent_idx]
-                            if comm_coeff != 0:
-                                sum_comm_weight += comm_coeff
+                        if args.policy_aggregation_mode != "scalar_product":
+                            for neighbor_agent_idx in range(args.n_agents):
+                                comm_coeff = self.comm_matrix[self.agent_idx][neighbor_agent_idx]
+                                if comm_coeff != 0:
+                                    sum_comm_weight += comm_coeff
+                                    if neighbor_agent_idx == self.agent_idx:
+                                        # Note that it differs from self.neighbors[self.agent_idx] after first
+                                        # local update since self.neighbors are fixed between global updates
+                                        # unlike self.previous_version_of_agent
+                                        neighbor_agent = self.previous_version_of_agent
+                                    else:
+                                        neighbor_agent = self.neighbors[neighbor_agent_idx]
 
+                                    _, neighbor_b_logprobs, _, _ = neighbor_agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
+
+                                    kl_div_with_neighbor = compute_kl_divergence(q_logprob=current_b_logprobs, p_logprob=neighbor_b_logprobs)
+                                    self.writer.add_scalar(f"charts/kl_{self.agent_idx}_{neighbor_agent_idx}", kl_div_with_neighbor, self.num_steps)
+
+                                    sum_kl_penalty += comm_coeff * kl_div_with_neighbor
+                                    weighted_neighbor_b_logprobs += comm_coeff * neighbor_b_logprobs
+                        else:
+                            top_k = 5
+                            comm_coeffs = torch.zeros(args.n_agents)
+                            neighbor_distributions = []
+                            kl_div_with_neighbors = torch.zeros(args.n_agents)
+
+                            for neighbor_agent_idx in range(args.n_agents):
                                 if neighbor_agent_idx == self.agent_idx:
                                     # Note that it differs from self.neighbors[self.agent_idx] after first
                                     # local update since self.neighbors are fixed between global updates
@@ -250,8 +272,27 @@ class FederatedEnvironment():
                                 kl_div_with_neighbor = compute_kl_divergence(q_logprob=current_b_logprobs, p_logprob=neighbor_b_logprobs)
                                 self.writer.add_scalar(f"charts/kl_{self.agent_idx}_{neighbor_agent_idx}", kl_div_with_neighbor, self.num_steps)
 
-                                sum_kl_penalty += comm_coeff * kl_div_with_neighbor
+                                comm_coeffs[neighbor_agent_idx] = torch.dot(
+                                    current_b_logprobs,
+                                    neighbor_b_logprobs
+                                )
+                                neighbor_distributions.append(neighbor_b_logprobs)
+                                kl_div_with_neighbors[neighbor_agent_idx] = kl_div_with_neighbor
+                            
+                            top_indices = torch.topk(comm_coeffs, k=top_k).indices
+                            misscomm_number = 0
+                            for neighbor_idx in top_indices:
+                                comm_coeff = comm_coeffs[neighbor_idx]
+                                sum_comm_weight += comm_coeff
+                                neighbor_b_logprobs = neighbor_distributions[neighbor_idx]
+
+                                sum_kl_penalty += comm_coeff * kl_div_with_neighbors[neighbor_idx]
                                 weighted_neighbor_b_logprobs += comm_coeff * neighbor_b_logprobs
+
+                                if get_agent_group_id(neighbor_idx, args) != get_agent_group_id(self.agent_idx, args):
+                                    misscomm_number += 1
+
+                            self.writer.add_scalar(f"charts/misscom_{self.agent_idx}", misscomm_number, self.num_steps)
 
                         if sum_comm_weight > 0:
                             sum_kl_penalty /= sum_comm_weight

@@ -85,7 +85,6 @@ class CustomCrossingEnv(MiniGridEnv):
 
     def __init__(
         self,
-        agent_id,
         size=9,
         num_crossings=1,
         obstacles_dir: int = 1, # [0: vertical and horizontal, 1: vertical, 2: horizontal]
@@ -96,7 +95,6 @@ class CustomCrossingEnv(MiniGridEnv):
         goal_corner: int = 2, # from [0, 1, 2, 3]
         **kwargs,
     ):
-        # self.agent_id = agent_id
         self.obstacles_dir = obstacles_dir
         # self.number_of_generated_grids = 0
         self.num_crossings = num_crossings
@@ -120,8 +118,6 @@ class CustomCrossingEnv(MiniGridEnv):
             max_steps=max_steps,
             **kwargs,
         )
-
-        # print(f"CustomCrossingEnv is initialized for agent {self.agent_id}")
 
     @staticmethod
     def _gen_mission_lava():

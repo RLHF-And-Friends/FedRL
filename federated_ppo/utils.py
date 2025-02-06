@@ -168,7 +168,10 @@ def compute_kl_divergence(q_logprob, p_logprob, eps=1e-8):
     return approx_kl
 
 
-def make_env(args, env_parameters_config, gym_id, seed, agent_idx, capture_video, run_name=None):
+def get_agent_group_id(agent_idx, args):
+    return agent_idx // args.agents_per_group
+
+def make_env(args, env_parameters_config, gym_id, seed, agent_idx, env_idx, capture_video, run_name=None):
     def thunk():
         if args.use_custom_env:
             if gym_id.startswith("MiniGrid-CustomLavaCrossingS9N2"):
@@ -188,15 +191,14 @@ def make_env(args, env_parameters_config, gym_id, seed, agent_idx, capture_video
                 obstacles_dir = 0
 
             group_id = 0
-            if args.policy_aggregation_mode == "scalar_product":                
-                group_id = agent_idx // args.agents_per_group
+            if args.policy_aggregation_mode == "scalar_product":
+                group_id = get_agent_group_id(agent_idx, args)
                 agent_corner = (agent_corner + group_id) % 4
                 goal_corner = (goal_corner + group_id) % 4            
 
             env = CustomCrossingEnv(
                 obstacle_type=obstacle_type,
                 see_through_walls=args.see_through_walls,
-                agent_id=agent_idx+1,
                 size=9,
                 num_crossings=2,
                 obstacles_dir=obstacles_dir,
@@ -227,9 +229,12 @@ def make_env(args, env_parameters_config, gym_id, seed, agent_idx, capture_video
 
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
-            if agent_idx == 0:
+            if agent_idx == 0 and env_idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/env_{agent_idx}/{run_name}")
-        print(f"agent_idx: {agent_idx}, seed: {seed}, group_id: {group_id}, agent_corner: {agent_corner}, goal_corner: {goal_corner}")
+
+        print(f"agent_idx: {agent_idx}, env_idx: {env_idx}, seed: {seed}, group_id: {group_id}, "\
+                f"agent_corner: {agent_corner}, goal_corner: {goal_corner}")
+
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
