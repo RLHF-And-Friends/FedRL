@@ -253,7 +253,7 @@ class FederatedEnvironment():
                                     sum_kl_penalty += comm_coeff * kl_div_with_neighbor
                                     weighted_neighbor_b_logprobs += comm_coeff * neighbor_b_logprobs
                         else:
-                            top_k = 5
+                            top_k = args.agents_per_group
                             comm_coeffs = torch.zeros(args.n_agents)
                             neighbor_distributions = []
                             kl_div_with_neighbors = torch.zeros(args.n_agents)
