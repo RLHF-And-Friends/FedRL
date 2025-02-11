@@ -31,11 +31,11 @@ def csv_to_tensorboard(csv_dir, log_dir):
 
             # Записываем данные в папку агента
             writer = SummaryWriter(agent_log_dir)
-            for step, value in enumerate(df.iloc[:, 0]):  # Первый столбец — значения
-                writer.add_scalar("charts/episodic_return", value, step)
+            for step, value in zip(df['step'], df['charts/episodic_return']):
+                writer.add_scalar("charts/episodic_return", value, int(step))
             writer.close()
 
 if __name__ == "__main__":
-    csv_dir = "averaged_logs/setup_5_11_mdpo"  # Папка с CSV-файлами
-    log_dir = "runs/setup_5_11_mdpo/averaged"  # Папка для логов TensorBoard
+    csv_dir = "experiments/04_02_2025_3/averaged_logs/setup_fixed_kl_ppo_no_custom"  # Папка с CSV-файлами
+    log_dir = "experiments/04_02_2025_3/averaged_logs/setup_fixed_kl_ppo_no_custom"  # Папка для логов TensorBoard
     csv_to_tensorboard(csv_dir, log_dir)
