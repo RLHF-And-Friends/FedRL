@@ -208,3 +208,9 @@ pip install -r requirements.txt
 ### Сохранение записей эпизодов
 
 При передаче флага ```--capture-video``` придётся запатчить [монитор](/home/smirnov/FedRL/patches/site-packages/wandb/integration/gym/__init__.py)
+
+### Перенести логи с одной тачки на другую
+
+```sh
+scp -r experiments/23_02_2025_2 smirnovvl@beleriand.velkerr.ru:~/exp
+```
