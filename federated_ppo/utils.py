@@ -124,12 +124,12 @@ def parse_args():
     assert args.policy_aggregation_mode in ["default", "average_return", "scalar_product"]
 
     if args.policy_aggregation_mode == "scalar_product":
-        assert args.n_agents % 3 == 0 and args.n_agents >= 9
+        assert args.n_agents % 3 == 0 and args.n_agents >= 3
         args.agents_per_group = args.n_agents // 3
 
         print("Agents per group: ", args.agents_per_group)
     elif args.policy_aggregation_mode == "average_return":
-        assert args.n_agents >= 9
+        assert args.n_agents >= 3
 
     # fmt: on
     return args
@@ -173,6 +173,7 @@ def get_agent_group_id(agent_idx, args):
 
 def make_env(args, env_parameters_config, gym_id, seed, agent_idx, env_idx, capture_video, run_name=None):
     def thunk():
+        group_id = 0
         if args.use_custom_env:
             if gym_id.startswith("MiniGrid-CustomLavaCrossingS9N2"):
                 obstacle_type=Lava
@@ -190,7 +191,6 @@ def make_env(args, env_parameters_config, gym_id, seed, agent_idx, env_idx, capt
             if args.policy_aggregation_mode != "default":
                 obstacles_dir = 0
 
-            group_id = 0
             if args.policy_aggregation_mode == "scalar_product":
                 group_id = get_agent_group_id(agent_idx, args)
                 agent_corner = (agent_corner + group_id) % 4
@@ -218,10 +218,14 @@ def make_env(args, env_parameters_config, gym_id, seed, agent_idx, env_idx, capt
             #         obs2 = env.reset() # obs: {'mission': ,'image': numpy.ndarray (56, 56, 3)}
             #         env = ImgObsWrapper(env) # Get rid of the 'mission' field
             #         obs3 = env.reset() # obs: numpy.ndarray (56, 56, 3)
+            print(f"agent_idx: {agent_idx}, env_idx: {env_idx}, seed: {seed}, group_id: {group_id}, "\
+                f"agent_corner: {agent_corner}, goal_corner: {goal_corner}")
         else:
             env = gym.make(gym_id, render_mode="rgb_array")
             if gym_id.startswith("MiniGrid"):
                 env = ImgObsWrapper(env)
+
+            print(f"agent_idx: {agent_idx}, env_idx: {env_idx}, seed: {seed}, group_id: {group_id}")
 
         # print("utils: obs space before sample: ", env.observation_space)
         # print("utils: obs space before sample shape: ", env.observation_space.shape)
@@ -231,9 +235,6 @@ def make_env(args, env_parameters_config, gym_id, seed, agent_idx, env_idx, capt
         if capture_video:
             if agent_idx == 0 and env_idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/env_{agent_idx}/{run_name}")
-
-        print(f"agent_idx: {agent_idx}, env_idx: {env_idx}, seed: {seed}, group_id: {group_id}, "\
-                f"agent_corner: {agent_corner}, goal_corner: {goal_corner}")
 
         env.action_space.seed(seed)
         env.observation_space.seed(seed)

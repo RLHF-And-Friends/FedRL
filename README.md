@@ -191,7 +191,7 @@ pip install -r requirements.txt
 
     заменить импорт
 
-    ```
+    ```python
     import gymnasium as gym
     from gymnasium import logger, spaces
     from gymnasium.core import ActionWrapper, ObservationWrapper, ObsType, Wrapper
@@ -199,10 +199,28 @@ pip install -r requirements.txt
 
     на
 
-    ```
+    ```python
     import gym
     from gym import logger, spaces
     from gym.core import ActionWrapper, ObservationWrapper, ObsType, Wrapper
+    ```
+
+5.  В файле
+
+    ```
+    /home/smirnovvl/miniconda3/envs/fedrl/lib/python3.11/site-packages/minigrid/envs/dynamicobstacles.py
+    ```
+
+    заменить импорт
+
+    ```python
+    from gymnasium.spaces import Discrete
+    ```
+
+    на
+
+    ```python
+    from gym.spaces import Discrete
     ```
 
 ### Сохранение записей эпизодов
