@@ -132,10 +132,10 @@ if __name__ == "__main__":
             run_name += "__"
         run_name += f"{args.exp_name}"
 
-    # if args.setup_id != "":
-    #     if run_name != "":
-    #         run_name += "__"
-    #     run_name += f"__{args.setup_id}"
+    if args.setup_id != "":
+        if run_name != "":
+            run_name += "__"
+        run_name += f"__{args.setup_id}"
 
     if args.seed != "":
         run_name += f"__seed_{args.seed}"
@@ -151,8 +151,12 @@ if __name__ == "__main__":
             sync_tensorboard=True,
             config=vars(args),
             name=run_name,
-            monitor_gym=True,
-            save_code=True,
+            monitor_gym=False,
+            save_code=False,
+            settings=wandb.Settings(
+                start_method="thread",
+                _disable_stats=True,
+            )
         )
 
     # TRY NOT TO MODIFY: seeding

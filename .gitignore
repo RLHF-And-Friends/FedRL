@@ -7,3 +7,4 @@ __pycache__/
 events.out.*
 nohup.out
 logs/
+*.csv

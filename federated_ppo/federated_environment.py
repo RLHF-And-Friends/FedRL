@@ -61,6 +61,20 @@ class FederatedEnvironment():
     def set_comm_matrix(self, comm_matrix):
         self.comm_matrix = comm_matrix
 
+    def interpolate_or_default(self, prev_r, last_r, prev_l, last_l, prev_step, last_step, step):
+        # if prev_r is not None and last_r is not None and prev_step is not None and last_step is not None:
+        #     interp_r = prev_r + (last_r - prev_r) * ((step - prev_step) / (last_step - prev_step))
+        #     interp_l = prev_l + (last_l - prev_l) * ((step - prev_step) / (last_step - prev_step))
+        # else:
+        #     interp_r = last_r if last_r is not None else 0
+        #     interp_l = last_l if last_l is not None else 0
+        # interp_l = max(interp_l, 0)
+
+        interp_r = last_r if last_r is not None else 0
+        interp_l = last_l if last_l is not None else 0
+
+        return interp_r, interp_l
+
     def local_update(self, number_of_communications):
         args = self.args
         # TRY NOT TO MODIFY: start the game
@@ -75,6 +89,11 @@ class FederatedEnvironment():
                 assert frac > 0, "fraction for learning rate annealing must be positive"
                 lrnow = frac * args.learning_rate
                 self.optimizer.param_groups[0]["lr"] = lrnow
+
+            last_r, prev_r = None, None
+            last_l, prev_l = None, None
+            last_step, prev_step = None, None
+            interp_r, interp_l = None, None
 
             for step in range(0, args.num_steps):
                 self.num_steps += 1 * args.num_envs
@@ -98,16 +117,34 @@ class FederatedEnvironment():
                 # print("info: ", info)
                 if len(info) > 0:
                     for i in range(args.num_envs):
+                        step = self.num_steps - args.num_envs + i
+
                         if info['_final_observation'][i]:
                             item = info['final_info'][i]
                             if "episode" in item.keys():
-                                # print(f"global_step={self.num_steps - args.num_envs + i}, episodic_return={item['episode']['r']}")
-                                self.writer.add_scalar("charts/episodic_return", item["episode"]["r"], self.num_steps - args.num_envs + i)
-                                self.writer.add_scalar("charts/episodic_length", item["episode"]["l"], self.num_steps - args.num_envs + i)                                
+                                r, l = item["episode"]["r"], item["episode"]["l"]
+
+                                prev_r, prev_l, prev_step = last_r, last_l, last_step
+                                last_r, last_l, last_step = r, l, step
+
+                                interp_r, interp_l = r, l
+
                                 if number_of_communications not in self.episodic_returns.keys():
                                     self.episodic_returns[number_of_communications] = []
 
-                                self.episodic_returns[number_of_communications].append(item["episode"]["r"])
+                                self.episodic_returns[number_of_communications].append(r)
+                            else:
+                                interp_r, interp_l = self.interpolate_or_default(prev_r, last_r, prev_l, last_l, prev_step, last_step, step)
+                        else:
+                            interp_r, interp_l = self.interpolate_or_default(prev_r, last_r, prev_l, last_l, prev_step, last_step, step)
+                else:
+                    for i in range(args.num_envs):
+                        step = self.num_steps - args.num_envs + i
+                        if step % 5000 == 0:
+                            interp_r, interp_l = self.interpolate_or_default(prev_r, last_r, prev_l, last_l, prev_step, last_step, step)
+
+                            self.writer.add_scalar("charts/episodic_return", interp_r, step)
+                            self.writer.add_scalar("charts/episodic_length", interp_l, step)
 
             # bootstrap value if not done
             with torch.no_grad():
