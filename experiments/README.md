@@ -244,6 +244,44 @@
 |  | <img src="25_02_2025_3/ppo.png" width="100%">  |   |
 
 
+## 26_02_2025_1
+
+**Среда:** DoorKey-6x6-v0
+
+Такой же сетап как 20_02_2025_1, но с 3 агентами и в среде "MiniGrid-FourRooms-v0" с коэффициентом регуляризации 0.4 для MDPO и 0.8 для PPO.
+
+| MDPO  | PPO | PPO and MDPO |
+|:-------------:|:-------------:|:-------------:|
+| <img src="26_02_2025_1/mdpo.png" width="100%">  | <img src="26_02_2025_1/ppo.png" width="100%">  | <img src="26_02_2025_1/ppo_mdpo.png" width="100%">  |
+
+
+Бейзлайны на одном графике:
+
+<img src="26_02_2025_1/ppo_mdpo_baselines.png" width="30%">
+
+Коллаборативные сетапы на одном графике:
+
+<img src="26_02_2025_1/ppo_mdpo_collaborative.png" width="30%">
+
+## 26_02_2025_2
+
+**Среда:** FourRooms-v0
+
+Такой же сетап как 20_02_2025_1, но с 3 агентами и в среде "MiniGrid-FourRooms-v0" с коэффициентом регуляризации 0.4 для MDPO и 0.8 для PPO.
+
+| MDPO  | PPO | PPO and MDPO |
+|:-------------:|:-------------:|:-------------:|
+| <img src="26_02_2025_2/mdpo.png" width="100%">  | <img src="26_02_2025_2/ppo.png" width="100%">  | <img src="26_02_2025_2/ppo_mdpo.png" width="100%">  |
+
+
+Бейзлайны на одном графике:
+
+<img src="26_02_2025_2/ppo_mdpo_baselines.png" width="30%">
+
+Коллаборативные сетапы на одном графике:
+
+<img src="26_02_2025_2/ppo_mdpo_collaborative.png" width="30%">
+
 ## 13_03_2025_1
 
 **Среда:** CustomLavaCrossingS9N2
